@@ -44,7 +44,7 @@ export const CONFIG = {
   PLAYER_INITIAL_DISCS: 3,
 
   // Enemy
-  ENEMY_CHAR: 'E',
+  ENEMY_CHARS: ['X', '+'],
   ENEMY_MOVE_SPEED: 400, // ms per grid step
   ENEMY_CHASE_RANGE: 8, // cells manhattan distance
   ENEMY_PATROL_PAUSE: 600, // ms pause between patrol moves

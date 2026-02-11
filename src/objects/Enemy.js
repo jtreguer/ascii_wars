@@ -10,9 +10,10 @@ export default class Enemy {
     this.row = row;
     this.isMoving = false;
     this.alive = true;
+    this.charIndex = 0;
 
     const pos = gridManager.gridToPixel(col, row);
-    this.text = scene.add.text(pos.x, pos.y, CONFIG.ENEMY_CHAR, {
+    this.text = scene.add.text(pos.x, pos.y, CONFIG.ENEMY_CHARS[0], {
       fontFamily: CONFIG.FONT_FAMILY,
       fontSize: CONFIG.CELL_FONT_SIZE,
       color: CONFIG.COLORS.MAGENTA,
@@ -60,6 +61,8 @@ export default class Enemy {
     this.isMoving = true;
     this.col = newCol;
     this.row = newRow;
+    this.charIndex = (this.charIndex + 1) % CONFIG.ENEMY_CHARS.length;
+    this.text.setText(CONFIG.ENEMY_CHARS[this.charIndex]);
 
     const target = this.gridManager.gridToPixel(newCol, newRow);
     this.scene.tweens.add({

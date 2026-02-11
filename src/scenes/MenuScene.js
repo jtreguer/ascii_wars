@@ -29,7 +29,7 @@ export default class MenuScene extends Phaser.Scene {
       'SPACE - THROW DISC',
       'COLLECT ALL [0] TOKENS',
       'REACH THE [X] EXIT',
-      'AVOID [E] ENEMIES',
+      'AVOID [X] [+] ENEMIES',
     ].join('\n'), {
       fontFamily: CONFIG.FONT_FAMILY,
       fontSize: '14px',
