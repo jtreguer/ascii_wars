@@ -58,6 +58,7 @@ export const CONFIG = {
   ENEMY_RELOCATE_MIN_MOVES: 6,  // min patrol moves before picking a new anchor
   ENEMY_RELOCATE_MAX_MOVES: 14, // max patrol moves before picking a new anchor
   ENEMY_RELOCATE_DISTANCE: 6,   // max cell offset when choosing new anchor
+  ENEMY_MIN_SPAWN_DISTANCE: 6,  // min manhattan distance from player start
 
   // Disc
   DISC_CHAR: 'o',

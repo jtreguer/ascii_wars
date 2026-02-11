@@ -1,5 +1,6 @@
 import { CONFIG } from '../config.js';
 import { CELL_TYPE, EVENTS, DIRECTION_DELTA } from '../utils/constants.js';
+import { manhattanDistance } from '../utils/math.js';
 import MazeGenerator from '../systems/MazeGenerator.js';
 import GridManager from '../systems/GridManager.js';
 import Player from '../objects/Player.js';
@@ -65,7 +66,8 @@ export default class GameScene extends Phaser.Scene {
 
     // Spawn enemies (use positions after tokens, excluding player line of sight)
     const enemyPositions = spawnPositions.slice(tokenCount).filter(
-      pos => !this._hasLineOfSight(pos.col, pos.row, this.startPos.col, this.startPos.row),
+      pos => manhattanDistance(pos.col, pos.row, this.startPos.col, this.startPos.row) >= CONFIG.ENEMY_MIN_SPAWN_DISTANCE &&
+        !this._hasLineOfSight(pos.col, pos.row, this.startPos.col, this.startPos.row),
     );
     const enemyCount = Math.min(
       CONFIG.LEVEL.BASE_ENEMIES + (this.level - 1) * CONFIG.LEVEL.ENEMIES_PER_LEVEL,
