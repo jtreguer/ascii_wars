@@ -454,10 +454,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _alertAllEnemies() {
+    let anyAlerted = false;
     for (const enemy of this.enemies) {
-      enemy.activateAlert();
+      if (enemy.alive) {
+        enemy.activateAlert();
+        anyAlerted = true;
+      }
     }
-    this.soundManager?.playAlertSiren();
+    if (anyAlerted) this.soundManager?.playAlertSiren();
   }
 
   _nextLevel() {
