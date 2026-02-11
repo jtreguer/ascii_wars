@@ -11,6 +11,7 @@ export default class Enemy {
     this.isMoving = false;
     this.alive = true;
     this.charIndex = 0;
+    this.chasing = false;
 
     const pos = gridManager.gridToPixel(col, row);
     this.text = scene.add.text(pos.x, pos.y, CONFIG.ENEMY_CHARS[0], {
@@ -25,11 +26,19 @@ export default class Enemy {
     this.text.body.setSize(CONFIG.CELL_SIZE - 4, CONFIG.CELL_SIZE - 4);
     this.text.body.setImmovable(true);
 
-    // Move timer
-    this.moveTimer = scene.time.addEvent({
-      delay: CONFIG.ENEMY_MOVE_SPEED + CONFIG.ENEMY_PATROL_PAUSE,
-      callback: () => this._move(),
-      loop: true,
+    // Start patrol timer
+    this._scheduleMove();
+  }
+
+  _scheduleMove() {
+    if (!this.alive) return;
+    const delay = this.chasing
+      ? CONFIG.ENEMY_CHASE_SPEED + CONFIG.ENEMY_CHASE_PAUSE
+      : CONFIG.ENEMY_MOVE_SPEED + CONFIG.ENEMY_PATROL_PAUSE;
+
+    this.moveTimer = this.scene.time.delayedCall(delay, () => {
+      this._move();
+      this._scheduleMove();
     });
   }
 
@@ -38,13 +47,22 @@ export default class Enemy {
 
     const playerCol = this.scene.player?.col;
     const playerRow = this.scene.player?.row;
+    const playerAlive = this.scene.player?.alive;
+
+    const inRange = playerCol !== undefined && playerRow !== undefined && playerAlive &&
+      manhattanDistance(this.col, this.row, playerCol, playerRow) <= CONFIG.ENEMY_CHASE_RANGE;
+
+    // Update chase state
+    if (inRange && !this.chasing) {
+      this.chasing = true;
+      this.text.setColor(CONFIG.COLORS.RED);
+    } else if (!inRange && this.chasing) {
+      this.chasing = false;
+      this.text.setColor(CONFIG.COLORS.MAGENTA);
+    }
 
     let targetDir;
-    if (
-      playerCol !== undefined &&
-      playerRow !== undefined &&
-      manhattanDistance(this.col, this.row, playerCol, playerRow) <= CONFIG.ENEMY_CHASE_RANGE
-    ) {
+    if (inRange) {
       targetDir = this._chaseDirection(playerCol, playerRow);
     } else {
       targetDir = this._patrolDirection();
@@ -61,15 +79,19 @@ export default class Enemy {
     this.isMoving = true;
     this.col = newCol;
     this.row = newRow;
-    this.charIndex = (this.charIndex + 1) % CONFIG.ENEMY_CHARS.length;
-    this.text.setText(CONFIG.ENEMY_CHARS[this.charIndex]);
 
+    // Cycle through chars — faster set when chasing
+    const chars = this.chasing ? CONFIG.ENEMY_CHASE_CHARS : CONFIG.ENEMY_CHARS;
+    this.charIndex = (this.charIndex + 1) % chars.length;
+    this.text.setText(chars[this.charIndex]);
+
+    const moveSpeed = this.chasing ? CONFIG.ENEMY_CHASE_SPEED : CONFIG.ENEMY_MOVE_SPEED;
     const target = this.gridManager.gridToPixel(newCol, newRow);
     this.scene.tweens.add({
       targets: this.text,
       x: target.x,
       y: target.y,
-      duration: CONFIG.ENEMY_MOVE_SPEED,
+      duration: moveSpeed,
       ease: 'Linear',
       onComplete: () => {
         this.isMoving = false;
@@ -108,7 +130,7 @@ export default class Enemy {
 
   die() {
     this.alive = false;
-    this.moveTimer.remove(false);
+    if (this.moveTimer) this.moveTimer.destroy();
     this.text.setColor(CONFIG.COLORS.RED);
     this.scene.tweens.add({
       targets: this.text,
@@ -125,7 +147,7 @@ export default class Enemy {
   }
 
   destroy() {
-    this.moveTimer.remove(false);
+    if (this.moveTimer) this.moveTimer.destroy();
     this.text.destroy();
   }
 }

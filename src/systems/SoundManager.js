@@ -182,6 +182,31 @@ export default class SoundManager {
     }
   }
 
+  playHit() {
+    if (!this.ctx) return;
+    const cfg = AUDIO().SFX;
+    const now = this._now();
+    const dur = cfg.HIT_DURATION;
+
+    // Low buzz with noise-like texture — sawtooth + square detuned
+    for (const [type, detune] of [['sawtooth', 0], ['square', 3]]) {
+      const osc = this.ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.setValueAtTime(cfg.HIT_FREQUENCY + detune, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + dur);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(cfg.HIT_VOLUME, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + dur + 0.01);
+    }
+  }
+
   playEnemyKill() {
     if (!this.ctx) return;
     const cfg = AUDIO().SFX;

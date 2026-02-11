@@ -48,9 +48,12 @@ export const CONFIG = {
 
   // Enemy
   ENEMY_CHARS: ['X', '+'],
+  ENEMY_CHASE_CHARS: ['X', '*', '+', '*'],
   ENEMY_MOVE_SPEED: 400, // ms per grid step
+  ENEMY_CHASE_SPEED: 220, // ms per grid step when chasing
   ENEMY_CHASE_RANGE: 8, // cells manhattan distance
   ENEMY_PATROL_PAUSE: 600, // ms pause between patrol moves
+  ENEMY_CHASE_PAUSE: 100, // ms pause between chase moves
 
   // Disc
   DISC_CHAR: 'o',
@@ -127,6 +130,10 @@ export const CONFIG = {
       KILL_FREQUENCY: 440,             // Hz base — ascending zap
       KILL_DURATION: 0.15,
       KILL_VOLUME: 0.20,
+
+      HIT_FREQUENCY: 180,              // Hz — low buzz impact
+      HIT_DURATION: 0.35,
+      HIT_VOLUME: 0.25,
     },
   },
 };

@@ -249,6 +249,7 @@ export default class GameScene extends Phaser.Scene {
   _playerHit() {
     this.dying = true;
     this.player.die();
+    this.soundManager?.playHit();
     this.soundManager?.playDeath();
     this.cameras.main.shake(300, 0.02);
     this.cameras.main.flash(300, 255, 0, 0);
