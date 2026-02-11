@@ -182,6 +182,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _onDiscMoved(disc) {
+    this._checkDiscHit(disc);
+  }
+
+  _checkDiscHit(disc) {
     if (!disc.active) return;
 
     for (const enemy of this.enemies) {
@@ -236,6 +240,11 @@ export default class GameScene extends Phaser.Scene {
           this._unlockExit();
         }
       }
+    }
+
+    // Check disc-enemy collisions every frame (supplements event-based check)
+    for (const disc of this.discs) {
+      this._checkDiscHit(disc);
     }
 
     // Check enemy collision
