@@ -18,13 +18,13 @@ export default class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Instructions
-    this.add.text(cx, 340, 'NAVIGATE THE LABYRINTH', {
+    this.add.text(cx, 320, 'NAVIGATE THE LABYRINTH', {
       fontFamily: CONFIG.FONT_FAMILY,
       fontSize: '16px',
       color: CONFIG.COLORS.GREEN,
     }).setOrigin(0.5);
 
-    this.add.text(cx, 380, [
+    this.add.text(cx, 400, [
       'ARROW KEYS - MOVE',
       'SPACE - THROW DISC',
       'COLLECT ALL [0] TOKENS',

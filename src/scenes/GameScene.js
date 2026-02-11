@@ -76,13 +76,15 @@ export default class GameScene extends Phaser.Scene {
     this.events.on('player-throw-disc', this._onThrowDisc, this);
     this.events.on('disc-moved', this._onDiscMoved, this);
 
-    // Emit initial UI state
-    const uiScene = this.scene.get('UIScene');
-    if (uiScene && uiScene.scene.isActive()) {
-      uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
-      uiScene.events.emit(EVENTS.DISCS_CHANGED, this.discsRemaining);
-      uiScene.events.emit(EVENTS.LEVEL_CHANGED, this.level);
-    }
+    // Emit initial UI state (delay to ensure UIScene is ready)
+    this.time.delayedCall(50, () => {
+      const uiScene = this.scene.get('UIScene');
+      if (uiScene && uiScene.scene.isActive()) {
+        uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
+        uiScene.events.emit(EVENTS.DISCS_CHANGED, this.discsRemaining);
+        uiScene.events.emit(EVENTS.LEVEL_CHANGED, this.level);
+      }
+    });
   }
 
   _renderMaze() {
