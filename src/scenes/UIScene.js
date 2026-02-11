@@ -71,12 +71,19 @@ export default class UIScene extends Phaser.Scene {
     this.paused = false;
     this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
     this.pauseKey.on('down', () => {
-      if (!this.paused) return;
-      this.paused = false;
-      this.pauseOverlay.setVisible(false);
-      this.pauseText.setVisible(false);
-      this.pauseHint.setVisible(false);
-      this.scene.resume('GameScene');
+      if (this.paused) {
+        this.paused = false;
+        this.pauseOverlay.setVisible(false);
+        this.pauseText.setVisible(false);
+        this.pauseHint.setVisible(false);
+        this.scene.resume('GameScene');
+      } else {
+        this.paused = true;
+        this.pauseOverlay.setVisible(true);
+        this.pauseText.setVisible(true);
+        this.pauseHint.setVisible(true);
+        this.scene.pause('GameScene');
+      }
     });
 
     // Listen for events from GameScene
@@ -116,13 +123,6 @@ export default class UIScene extends Phaser.Scene {
       else this.multiplierText.setColor(CONFIG.COLORS.RED);
     });
 
-    this.events.on('pause-game', () => {
-      this.paused = true;
-      this.pauseOverlay.setVisible(true);
-      this.pauseText.setVisible(true);
-      this.pauseHint.setVisible(true);
-    });
-
     this.events.on('show-bonus', (timeBonus, multiplier, discBonus, discsLeft) => {
       let lines = `TIME  +${timeBonus} (x${multiplier})`;
       if (discBonus > 0) {
@@ -149,7 +149,6 @@ export default class UIScene extends Phaser.Scene {
     this.events.off(EVENTS.LIVES_CHANGED);
     this.events.off(EVENTS.TIMER_CHANGED);
     this.events.off('show-bonus');
-    this.events.off('pause-game');
     if (this.pauseKey) this.pauseKey.removeAllListeners();
   }
 }

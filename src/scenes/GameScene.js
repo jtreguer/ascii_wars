@@ -63,15 +63,18 @@ export default class GameScene extends Phaser.Scene {
     this.totalTokens = tokenCount;
     this.collectedTokens = 0;
 
-    // Spawn enemies (use positions after tokens)
+    // Spawn enemies (use positions after tokens, excluding player line of sight)
+    const enemyPositions = spawnPositions.slice(tokenCount).filter(
+      pos => !this._hasLineOfSight(pos.col, pos.row, this.startPos.col, this.startPos.row),
+    );
     const enemyCount = Math.min(
       CONFIG.LEVEL.BASE_ENEMIES + (this.level - 1) * CONFIG.LEVEL.ENEMIES_PER_LEVEL,
       CONFIG.LEVEL.MAX_ENEMIES,
-      spawnPositions.length - tokenCount,
+      enemyPositions.length,
     );
     this.enemies = [];
     for (let i = 0; i < enemyCount; i++) {
-      const pos = spawnPositions[tokenCount + i];
+      const pos = enemyPositions[i];
       this.enemies.push(new Enemy(this, this.gridManager, pos.col, pos.row));
     }
 
@@ -91,16 +94,6 @@ export default class GameScene extends Phaser.Scene {
       this.soundManager.startAmbient();
     }
 
-    // Pause key
-    this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
-    this.pauseKey.on('down', () => {
-      const uiScene = this.scene.get('UIScene');
-      if (uiScene && uiScene.scene.isActive()) {
-        uiScene.events.emit('pause-game');
-      }
-      this.scene.pause();
-    });
-
     // Emit initial UI state (delay to ensure UIScene is ready)
     this.time.delayedCall(50, () => {
       const uiScene = this.scene.get('UIScene');
@@ -113,6 +106,25 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  _isWall(r, c) {
+    if (r < 0 || r >= CONFIG.GRID_ROWS || c < 0 || c >= CONFIG.GRID_COLS) return true;
+    return this.grid[r][c] === CELL_TYPE.WALL;
+  }
+
+  _getWallChar(r, c) {
+    const up = this._isWall(r - 1, c);
+    const down = this._isWall(r + 1, c);
+    const left = this._isWall(r, c - 1);
+    const right = this._isWall(r, c + 1);
+    const hasH = left || right;
+    const hasV = up || down;
+
+    if (hasH && hasV) return '+';
+    if (hasH) return '-';
+    if (hasV) return '|';
+    return '+';
+  }
+
   _renderMaze() {
     this.wallTexts = [];
     for (let r = 0; r < CONFIG.GRID_ROWS; r++) {
@@ -121,7 +133,7 @@ export default class GameScene extends Phaser.Scene {
         const pos = this.gridManager.gridToPixel(c, r);
 
         if (cell === CELL_TYPE.WALL) {
-          const t = this.add.text(pos.x, pos.y, CONFIG.MAZE_WALL_CHAR, {
+          const t = this.add.text(pos.x, pos.y, this._getWallChar(r, c), {
             fontFamily: CONFIG.FONT_FAMILY,
             fontSize: CONFIG.CELL_FONT_SIZE,
             color: CONFIG.COLORS.WALL,
@@ -341,10 +353,29 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  _hasLineOfSight(col1, row1, col2, row2) {
+    if (col1 === col2) {
+      const minR = Math.min(row1, row2);
+      const maxR = Math.max(row1, row2);
+      for (let r = minR + 1; r < maxR; r++) {
+        if (this.grid[r][col1] !== CELL_TYPE.FLOOR) return false;
+      }
+      return true;
+    }
+    if (row1 === row2) {
+      const minC = Math.min(col1, col2);
+      const maxC = Math.max(col1, col2);
+      for (let c = minC + 1; c < maxC; c++) {
+        if (this.grid[row1][c] !== CELL_TYPE.FLOOR) return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
   _cleanup() {
     this.events.off('player-throw-disc', this._onThrowDisc, this);
     this.events.off('disc-moved', this._onDiscMoved, this);
-    if (this.pauseKey) this.pauseKey.removeAllListeners();
     this.soundManager?.destroy();
   }
 
