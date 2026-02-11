@@ -83,6 +83,49 @@ export default class SoundManager {
     this.scene.sound.play('hit', { volume: AUDIO().SFX.HIT_VOLUME });
   }
 
+  playAlertSiren() {
+    if (!this.ctx || !this.masterGain) return;
+    const cfg = AUDIO().SFX;
+    const now = this.ctx.currentTime;
+    const dur = cfg.ALERT_DURATION;
+    const sweeps = cfg.ALERT_SWEEPS;
+    const lo = cfg.ALERT_FREQ_LOW;
+    const hi = cfg.ALERT_FREQ_HIGH;
+    const step = dur / (sweeps * 2);
+
+    // Two detuned oscillators for a thick screeching tone
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    osc1.type = 'square';
+    osc2.type = 'sawtooth';
+    osc2.detune.value = 15;
+
+    // Siren sweep: rapid up-down frequency ramps
+    for (const osc of [osc1, osc2]) {
+      osc.frequency.setValueAtTime(lo, now);
+      for (let i = 0; i < sweeps; i++) {
+        const t = now + i * step * 2;
+        osc.frequency.linearRampToValueAtTime(hi, t + step);
+        osc.frequency.linearRampToValueAtTime(lo, t + step * 2);
+      }
+    }
+
+    // Gain envelope — sustain then fade out
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(cfg.ALERT_VOLUME, now);
+    gain.gain.setValueAtTime(cfg.ALERT_VOLUME, now + dur * 0.7);
+    gain.gain.linearRampToValueAtTime(0, now + dur);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + dur);
+    osc2.stop(now + dur);
+  }
+
   // --- Ambient (Web Audio drone + file-based bleeps/bloops) ---
 
   _startDrone() {

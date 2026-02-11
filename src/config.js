@@ -54,6 +54,10 @@ export const CONFIG = {
   ENEMY_CHASE_RANGE: 8, // cells manhattan distance
   ENEMY_PATROL_PAUSE: 600, // ms pause between patrol moves
   ENEMY_CHASE_PAUSE: 100, // ms pause between chase moves
+  ENEMY_PATROL_RADIUS: 4, // cells — max wander distance from anchor before steering back
+  ENEMY_RELOCATE_MIN_MOVES: 6,  // min patrol moves before picking a new anchor
+  ENEMY_RELOCATE_MAX_MOVES: 14, // max patrol moves before picking a new anchor
+  ENEMY_RELOCATE_DISTANCE: 6,   // max cell offset when choosing new anchor
 
   // Disc
   DISC_CHAR: 'o',
@@ -141,6 +145,12 @@ export const CONFIG = {
       HIT_FREQUENCY: 180,              // Hz — low buzz impact
       HIT_DURATION: 0.35,
       HIT_VOLUME: 0.25,
+
+      ALERT_FREQ_LOW: 400,            // Hz — siren low frequency
+      ALERT_FREQ_HIGH: 900,           // Hz — siren high frequency
+      ALERT_DURATION: 0.5,            // seconds
+      ALERT_SWEEPS: 3,                // number of up-down sweeps
+      ALERT_VOLUME: 0.12,
     },
   },
 };

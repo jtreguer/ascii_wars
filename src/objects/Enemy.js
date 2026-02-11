@@ -13,6 +13,11 @@ export default class Enemy {
     this.charIndex = 0;
     this.chasing = false;
 
+    // Patrol roaming
+    this.patrolAnchor = { col, row };
+    this.patrolMoveCount = 0;
+    this.relocateThreshold = this._nextRelocateThreshold();
+
     const pos = gridManager.gridToPixel(col, row);
     this.text = scene.add.text(pos.x, pos.y, CONFIG.ENEMY_CHARS[0], {
       fontFamily: CONFIG.FONT_FAMILY,
@@ -28,6 +33,11 @@ export default class Enemy {
 
     // Start patrol timer
     this._scheduleMove();
+  }
+
+  _nextRelocateThreshold() {
+    return CONFIG.ENEMY_RELOCATE_MIN_MOVES +
+      Math.floor(Math.random() * (CONFIG.ENEMY_RELOCATE_MAX_MOVES - CONFIG.ENEMY_RELOCATE_MIN_MOVES + 1));
   }
 
   _scheduleMove() {
@@ -56,15 +66,26 @@ export default class Enemy {
     if (inRange && !this.chasing) {
       this.chasing = true;
       this.text.setColor(CONFIG.COLORS.RED);
+      this.scene.soundManager?.playAlertSiren();
     } else if (!inRange && this.chasing) {
       this.chasing = false;
       this.text.setColor(CONFIG.COLORS.MAGENTA);
+      // Anchor to where we stopped chasing
+      this.patrolAnchor = { col: this.col, row: this.row };
+      this.patrolMoveCount = 0;
+      this.relocateThreshold = this._nextRelocateThreshold();
     }
 
     let targetDir;
     if (inRange) {
       targetDir = this._chaseDirection(playerCol, playerRow);
     } else {
+      this.patrolMoveCount++;
+      if (this.patrolMoveCount >= this.relocateThreshold) {
+        this._pickNewAnchor();
+        this.patrolMoveCount = 0;
+        this.relocateThreshold = this._nextRelocateThreshold();
+      }
       targetDir = this._patrolDirection();
     }
 
@@ -100,13 +121,27 @@ export default class Enemy {
   }
 
   _chaseDirection(playerCol, playerRow) {
-    const dirs = [];
-    if (playerRow < this.row) dirs.push(DIRECTION.UP);
-    if (playerRow > this.row) dirs.push(DIRECTION.DOWN);
-    if (playerCol < this.col) dirs.push(DIRECTION.LEFT);
-    if (playerCol > this.col) dirs.push(DIRECTION.RIGHT);
+    return this._moveToward(playerCol, playerRow) || this._randomWalkable();
+  }
 
-    // Try chase directions first, then random
+  _patrolDirection() {
+    const dist = manhattanDistance(this.col, this.row, this.patrolAnchor.col, this.patrolAnchor.row);
+
+    if (dist > CONFIG.ENEMY_PATROL_RADIUS) {
+      const toward = this._moveToward(this.patrolAnchor.col, this.patrolAnchor.row);
+      if (toward) return toward;
+    }
+
+    return this._randomWalkable();
+  }
+
+  _moveToward(targetCol, targetRow) {
+    const dirs = [];
+    if (targetRow < this.row) dirs.push(DIRECTION.UP);
+    if (targetRow > this.row) dirs.push(DIRECTION.DOWN);
+    if (targetCol < this.col) dirs.push(DIRECTION.LEFT);
+    if (targetCol > this.col) dirs.push(DIRECTION.RIGHT);
+
     const shuffled = shuffleArray(dirs);
     for (const dir of shuffled) {
       const d = DIRECTION_DELTA[dir];
@@ -114,10 +149,10 @@ export default class Enemy {
         return dir;
       }
     }
-    return this._patrolDirection();
+    return null;
   }
 
-  _patrolDirection() {
+  _randomWalkable() {
     const allDirs = shuffleArray([DIRECTION.UP, DIRECTION.DOWN, DIRECTION.LEFT, DIRECTION.RIGHT]);
     for (const dir of allDirs) {
       const d = DIRECTION_DELTA[dir];
@@ -126,6 +161,21 @@ export default class Enemy {
       }
     }
     return null;
+  }
+
+  _pickNewAnchor() {
+    const dist = CONFIG.ENEMY_RELOCATE_DISTANCE;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const dx = Math.floor(Math.random() * (dist * 2 + 1)) - dist;
+      const dy = Math.floor(Math.random() * (dist * 2 + 1)) - dist;
+      const newCol = this.patrolAnchor.col + dx;
+      const newRow = this.patrolAnchor.row + dy;
+      if (manhattanDistance(this.col, this.row, newCol, newRow) >= 3 &&
+          this.gridManager.isWalkable(newCol, newRow)) {
+        this.patrolAnchor = { col: newCol, row: newRow };
+        return;
+      }
+    }
   }
 
   die() {
