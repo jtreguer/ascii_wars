@@ -117,7 +117,16 @@ export const CONFIG = {
       TOKEN_FREQUENCY: 1319,            // E6
       TOKEN_DETUNE: 8,                  // Hz offset for chorus shimmer
       TOKEN_DURATION: 0.18,
-      TOKEN_VOLUME: 0.10,
+      TOKEN_VOLUME: 0.25,
+
+      PEW_FREQUENCY: 1200,             // Hz start — high pitched zap
+      PEW_FREQUENCY_END: 300,          // Hz end — sweeps down fast
+      PEW_DURATION: 0.18,
+      PEW_VOLUME: 0.30,
+
+      KILL_FREQUENCY: 440,             // Hz base — ascending zap
+      KILL_DURATION: 0.15,
+      KILL_VOLUME: 0.20,
     },
   },
 };

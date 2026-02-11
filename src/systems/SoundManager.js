@@ -2,6 +2,9 @@ import { CONFIG } from '../config.js';
 
 const AUDIO = () => CONFIG.AUDIO;
 
+// Small offset to ensure Web Audio events are scheduled in the future
+const T_OFFSET = 0.015;
+
 // A minor pentatonic frequencies across octaves
 const BLEEP_FREQS = [523, 587, 659, 784, 880, 1047, 1175, 1319];
 const BLOOP_FREQS = [110, 131, 147, 165, 196, 220, 262, 294];
@@ -63,10 +66,37 @@ export default class SoundManager {
 
   // --- SFX ---
 
+  _now() {
+    return this.ctx.currentTime + T_OFFSET;
+  }
+
+  playPew() {
+    if (!this.ctx) return;
+    const cfg = AUDIO().SFX;
+    const now = this._now();
+    const dur = cfg.PEW_DURATION;
+
+    const osc = this.ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(cfg.PEW_FREQUENCY, now);
+    osc.frequency.exponentialRampToValueAtTime(cfg.PEW_FREQUENCY_END, now + dur);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(cfg.PEW_VOLUME, now + 0.005);
+    gain.gain.setValueAtTime(cfg.PEW_VOLUME, now + dur * 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + dur + 0.01);
+  }
+
   playDeath() {
     if (!this.ctx) return;
     const cfg = AUDIO().SFX;
-    const now = this.ctx.currentTime;
+    const now = this._now();
 
     cfg.DEATH_NOTES.forEach((freq, i) => {
       const start = now + i * (cfg.DEATH_NOTE_DURATION + cfg.DEATH_NOTE_GAP);
@@ -75,7 +105,7 @@ export default class SoundManager {
       osc.frequency.value = freq;
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, start);
+      gain.gain.setValueAtTime(0.001, start);
       gain.gain.linearRampToValueAtTime(cfg.DEATH_VOLUME, start + 0.01);
       gain.gain.setValueAtTime(cfg.DEATH_VOLUME, start + cfg.DEATH_NOTE_DURATION * 0.6);
       gain.gain.exponentialRampToValueAtTime(0.001, start + cfg.DEATH_NOTE_DURATION);
@@ -90,7 +120,7 @@ export default class SoundManager {
   playTriumph() {
     if (!this.ctx) return;
     const cfg = AUDIO().SFX;
-    const now = this.ctx.currentTime;
+    const now = this._now();
     const notes = cfg.TRIUMPH_NOTES;
 
     notes.forEach((freq, i) => {
@@ -102,7 +132,6 @@ export default class SoundManager {
       osc.type = 'sine';
       osc.frequency.value = freq;
 
-      // Second oscillator detuned slightly for richness on last note
       let osc2 = null;
       if (isLast) {
         osc2 = this.ctx.createOscillator();
@@ -111,7 +140,7 @@ export default class SoundManager {
       }
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, start);
+      gain.gain.setValueAtTime(0.001, start);
       gain.gain.linearRampToValueAtTime(cfg.TRIUMPH_VOLUME, start + 0.01);
       gain.gain.setValueAtTime(cfg.TRIUMPH_VOLUME, start + dur * 0.5);
       gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
@@ -132,7 +161,7 @@ export default class SoundManager {
   playTokenCollect() {
     if (!this.ctx) return;
     const cfg = AUDIO().SFX;
-    const now = this.ctx.currentTime;
+    const now = this._now();
     const dur = cfg.TOKEN_DURATION;
 
     // Two slightly detuned sines for crystalline shimmer
@@ -142,7 +171,7 @@ export default class SoundManager {
       osc.frequency.value = cfg.TOKEN_FREQUENCY + detune;
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
+      gain.gain.setValueAtTime(0.001, now);
       gain.gain.linearRampToValueAtTime(cfg.TOKEN_VOLUME, now + 0.005);
       gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
@@ -150,6 +179,34 @@ export default class SoundManager {
       gain.connect(this.masterGain);
       osc.start(now);
       osc.stop(now + dur + 0.01);
+    }
+  }
+
+  playEnemyKill() {
+    if (!this.ctx) return;
+    const cfg = AUDIO().SFX;
+    const now = this._now();
+    const dur = cfg.KILL_DURATION;
+
+    // Quick ascending zap — two notes
+    for (let i = 0; i < 2; i++) {
+      const start = now + i * dur * 0.4;
+      const freq = cfg.KILL_FREQUENCY * (i + 1);
+
+      const osc = this.ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, start);
+      osc.frequency.exponentialRampToValueAtTime(freq * 2, start + dur * 0.5);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.linearRampToValueAtTime(cfg.KILL_VOLUME, start + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + dur * 0.5);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(start);
+      osc.stop(start + dur * 0.5 + 0.01);
     }
   }
 
@@ -220,7 +277,7 @@ export default class SoundManager {
 
   _playBleep() {
     const cfg = AUDIO().AMBIENT;
-    const now = this.ctx.currentTime;
+    const now = this._now();
     const freq = BLEEP_FREQS[Math.floor(Math.random() * BLEEP_FREQS.length)];
     const duration = 0.04 + Math.random() * 0.1;
 
@@ -229,7 +286,7 @@ export default class SoundManager {
     osc.frequency.value = freq;
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
+    gain.gain.setValueAtTime(0.001, now);
     gain.gain.linearRampToValueAtTime(cfg.BLEEP_VOLUME, now + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
@@ -241,7 +298,7 @@ export default class SoundManager {
 
   _playBloop() {
     const cfg = AUDIO().AMBIENT;
-    const now = this.ctx.currentTime;
+    const now = this._now();
     const freq = BLOOP_FREQS[Math.floor(Math.random() * BLOOP_FREQS.length)];
     const duration = 0.12 + Math.random() * 0.2;
 
@@ -251,7 +308,7 @@ export default class SoundManager {
     osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + duration);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
+    gain.gain.setValueAtTime(0.001, now);
     gain.gain.linearRampToValueAtTime(cfg.BLOOP_VOLUME, now + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 

@@ -154,6 +154,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     disc.fire(startCol, startRow, direction);
+    this.soundManager?.playPew();
   }
 
   _onDiscMoved(disc) {
@@ -164,6 +165,7 @@ export default class GameScene extends Phaser.Scene {
       if (enemy.col === disc.col && enemy.row === disc.row) {
         enemy.die();
         disc.deactivate();
+        this.soundManager?.playEnemyKill();
         this.score += CONFIG.ENEMY_KILL_SCORE;
         const uiScene = this.scene.get('UIScene');
         if (uiScene && uiScene.scene.isActive()) {

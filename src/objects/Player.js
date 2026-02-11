@@ -55,7 +55,17 @@ export default class Player {
         this.facing = dir;
         this.scene.events.emit('player-throw-disc', this.col, this.row, dir);
         this.aiming = false;
+        this._waitRelease = true;
         this.text.setColor(CONFIG.COLORS.CYAN);
+      }
+      return;
+    }
+
+    // After firing, wait for all direction keys to be released
+    if (this._waitRelease) {
+      if (!this.cursors.up.isDown && !this.cursors.down.isDown &&
+          !this.cursors.left.isDown && !this.cursors.right.isDown) {
+        this._waitRelease = false;
       }
       return;
     }
