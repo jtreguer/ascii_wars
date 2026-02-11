@@ -1,5 +1,6 @@
 import { CONFIG } from '../config.js';
 import { VICTORY_ART } from '../utils/ascii.js';
+import { saveScore, getRank } from '../systems/Leaderboard.js';
 
 export default class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -13,33 +14,38 @@ export default class VictoryScene extends Phaser.Scene {
   create() {
     const cx = CONFIG.GAME_WIDTH / 2;
 
-    this.add.text(cx, 120, VICTORY_ART, {
+    this.add.text(cx, 60, VICTORY_ART, {
       fontFamily: CONFIG.FONT_FAMILY,
-      fontSize: '16px',
+      fontSize: '14px',
       color: CONFIG.COLORS.YELLOW,
       align: 'center',
     }).setOrigin(0.5);
 
-    this.add.text(cx, 280, "YOU WON THE ASCII WARS", {
+    this.add.text(cx, 160, "YOU WON THE ASCII WARS", {
       fontFamily: CONFIG.FONT_FAMILY,
-      fontSize: '22px',
+      fontSize: '20px',
       color: CONFIG.COLORS.CYAN,
     }).setOrigin(0.5);
 
-    this.add.text(cx, 320, "YOU'RE THE NEW KING OF ASCIILAND", {
+    this.add.text(cx, 188, "YOU'RE THE NEW KING OF ASCIILAND", {
       fontFamily: CONFIG.FONT_FAMILY,
-      fontSize: '18px',
+      fontSize: '14px',
       color: CONFIG.COLORS.GREEN,
     }).setOrigin(0.5);
 
-    this.add.text(cx, 380, `FINAL SCORE: ${this.finalScore}`, {
+    this.add.text(cx, 218, `FINAL SCORE: ${this.finalScore}`, {
       fontFamily: CONFIG.FONT_FAMILY,
       fontSize: '20px',
       color: CONFIG.COLORS.MAGENTA,
     }).setOrigin(0.5);
 
+    // Save score and show leaderboard
+    const scores = saveScore(this.finalScore, CONFIG.MAX_LEVEL, true);
+    const rank = getRank(scores, this.finalScore);
+    this._buildLeaderboard(cx, 250, scores, rank);
+
     // Blinking prompt
-    this.prompt = this.add.text(cx, 480, '>>> PRESS SPACE TO RETURN TO MENU <<<', {
+    this.prompt = this.add.text(cx, 560, '>>> PRESS SPACE TO RETURN TO MENU <<<', {
       fontFamily: CONFIG.FONT_FAMILY,
       fontSize: '18px',
       color: CONFIG.COLORS.ORANGE,
@@ -63,6 +69,64 @@ export default class VictoryScene extends Phaser.Scene {
         this.scene.start('MenuScene');
       });
     });
+  }
+
+  _buildLeaderboard(cx, topY, scores, currentRank) {
+    if (scores.length === 0) return;
+
+    this.add.text(cx, topY, '- LEADERBOARD -', {
+      fontFamily: CONFIG.FONT_FAMILY,
+      fontSize: '14px',
+      color: CONFIG.COLORS.YELLOW,
+    }).setOrigin(0.5);
+
+    const listTop = topY + 22;
+    const visibleHeight = 220;
+    const rowH = 20;
+    const totalHeight = scores.length * rowH;
+
+    // Container for all entries
+    const container = this.add.container(0, 0);
+
+    for (let i = 0; i < scores.length; i++) {
+      const entry = scores[i];
+      const y = listTop + i * rowH;
+      const rankStr = String(i + 1).padStart(2, ' ');
+      const scoreStr = String(entry.score).padStart(7, ' ');
+      const lvlStr = `L${entry.level}`;
+      const tag = entry.won ? ' WIN' : '';
+      const isCurrent = i === currentRank;
+
+      const color = isCurrent ? CONFIG.COLORS.CYAN : CONFIG.COLORS.WHITE;
+      const prefix = isCurrent ? '>' : ' ';
+
+      const text = this.add.text(cx, y, `${prefix}${rankStr}. ${scoreStr}  ${lvlStr}${tag}`, {
+        fontFamily: CONFIG.FONT_FAMILY,
+        fontSize: '13px',
+        color,
+      }).setOrigin(0.5);
+
+      container.add(text);
+    }
+
+    // Mask to clip the visible area
+    const mask = this.add.rectangle(cx, listTop + visibleHeight / 2, 400, visibleHeight, 0x000000).setVisible(false);
+    container.setMask(mask.createGeometryMask());
+
+    // Auto-scroll if content exceeds visible area
+    if (totalHeight > visibleHeight) {
+      const scrollDist = totalHeight - visibleHeight;
+      this.tweens.add({
+        targets: container,
+        y: -scrollDist,
+        duration: scores.length * 1200,
+        delay: 1500,
+        ease: 'Linear',
+        yoyo: true,
+        repeat: -1,
+        hold: 2000,
+      });
+    }
   }
 
   _scheduleBleep() {
