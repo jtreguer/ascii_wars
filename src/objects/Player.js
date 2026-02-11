@@ -32,20 +32,23 @@ export default class Player {
   _setupInput() {
     this.cursors = this.scene.input.keyboard.createCursorKeys();
     this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.spaceKey.on('down', () => this._toggleAiming());
-  }
-
-  _toggleAiming() {
-    if (!this.alive || this.isMoving) return;
-    this.aiming = !this.aiming;
-    this.text.setColor(this.aiming ? CONFIG.COLORS.ORANGE : CONFIG.COLORS.CYAN);
   }
 
   update() {
     if (!this.alive || this.isMoving) return;
 
+    // Aiming: hold SPACE while discs available
+    const wantsAim = this.spaceKey.isDown && this.scene.discsRemaining > 0;
+    if (wantsAim && !this.aiming) {
+      this.aiming = true;
+      this.text.setColor(CONFIG.COLORS.ORANGE);
+    } else if (!wantsAim && this.aiming) {
+      this.aiming = false;
+      this.text.setColor(CONFIG.COLORS.CYAN);
+    }
+
     if (this.aiming) {
-      // In aiming mode: JustDown so held keys don't instantly fire
+      // JustDown so each key press fires one disc
       let dir = DIRECTION.NONE;
       if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) dir = DIRECTION.UP;
       else if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) dir = DIRECTION.DOWN;
@@ -55,18 +58,6 @@ export default class Player {
       if (dir !== DIRECTION.NONE) {
         this.facing = dir;
         this.scene.events.emit('player-throw-disc', this.col, this.row, dir);
-        this.aiming = false;
-        this._waitRelease = true;
-        this.text.setColor(CONFIG.COLORS.CYAN);
-      }
-      return;
-    }
-
-    // After firing, wait for all direction keys to be released
-    if (this._waitRelease) {
-      if (!this.cursors.up.isDown && !this.cursors.down.isDown &&
-          !this.cursors.left.isDown && !this.cursors.right.isDown) {
-        this._waitRelease = false;
       }
       return;
     }

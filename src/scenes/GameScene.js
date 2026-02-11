@@ -467,6 +467,17 @@ export default class GameScene extends Phaser.Scene {
   _nextLevel() {
     this.levelComplete = true;
 
+    // Freeze and explode remaining enemies
+    let explosionDelay = 0;
+    for (const enemy of this.enemies) {
+      if (!enemy.alive) continue;
+      this.time.delayedCall(explosionDelay, () => {
+        enemy.die();
+        this.soundManager?.playEnemyKill();
+      });
+      explosionDelay += 100;
+    }
+
     // Time bonus
     const seconds = Math.floor(this.elapsedMs / 1000);
     let multiplier = CONFIG.TIME_BONUS_DEFAULT;
