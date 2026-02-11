@@ -99,6 +99,7 @@ export const CONFIG = {
   ROOM_MAX_SIZE: 5, // max width/height of a room
 
   // Level progression
+  MAX_LEVEL: 10,
   LEVEL: {
     BASE_ENEMIES: 3,
     ENEMIES_PER_LEVEL: 1,

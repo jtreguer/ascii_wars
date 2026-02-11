@@ -383,7 +383,12 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.flash(300, 0, 255, 0);
     this.time.delayedCall(CONFIG.LEVEL_RECAP_DURATION, () => {
       this._cleanup();
-      this.scene.restart({ level: this.level + 1, score: this.score, lives: this.lives });
+      if (this.level >= CONFIG.MAX_LEVEL) {
+        this.scene.stop('UIScene');
+        this.scene.start('VictoryScene', { score: this.score });
+      } else {
+        this.scene.restart({ level: this.level + 1, score: this.score, lives: this.lives });
+      }
     });
   }
 
