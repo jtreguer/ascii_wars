@@ -137,6 +137,8 @@ export const CONFIG = {
 
   // Scoring
   ENEMY_KILL_SCORE: 250,
+  SPEED_BONUS_SCORE: 2500,
+  DISC_CARRIER_SCORE: 5000,
   LEVEL_COMPLETE_BONUS: 500,
   TIME_BONUS: [
     { maxSeconds: 30, multiplier: 10 },

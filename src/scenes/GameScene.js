@@ -520,11 +520,15 @@ export default class GameScene extends Phaser.Scene {
     this.soundManager?.playSpeedBonus();
     this.speedBonusActive = true;
     this.player.speedMultiplier = CONFIG.SPEED_BONUS.MULTIPLIER;
+    this.score += CONFIG.SPEED_BONUS_SCORE;
 
     // Tint player to indicate speed boost
     this.player.text.setColor(CONFIG.COLORS.WHITE);
 
     const uiScene = this.scene.get('UIScene');
+    if (uiScene && uiScene.scene.isActive()) {
+      uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
+    }
 
     // Countdown timer for UI
     let remaining = CONFIG.SPEED_BONUS.DURATION / 1000;
@@ -560,9 +564,11 @@ export default class GameScene extends Phaser.Scene {
     carrier.collect();
     this.soundManager?.playDiscCarrier();
     this.discsRemaining = CONFIG.LEVEL.DISCS_PER_LEVEL;
+    this.score += CONFIG.DISC_CARRIER_SCORE;
     const uiScene = this.scene.get('UIScene');
     if (uiScene && uiScene.scene.isActive()) {
       uiScene.events.emit(EVENTS.DISCS_CHANGED, this.discsRemaining);
+      uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
     }
   }
 
