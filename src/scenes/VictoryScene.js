@@ -54,10 +54,39 @@ export default class VictoryScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
+    // Ambient beep/boop sounds
+    this._scheduleBleep();
+
     this.time.delayedCall(500, () => {
       this.input.keyboard.once('keydown-SPACE', () => {
+        this._stopBleeps();
         this.scene.start('MenuScene');
       });
     });
+  }
+
+  _scheduleBleep() {
+    const delay = 600 + Math.random() * 2000;
+    this.bleepTimer = this.time.delayedCall(delay, () => {
+      if (Math.random() > 0.4) {
+        const rate = 0.6 + Math.random() * 1.4;
+        this.sound.play('bleep', { volume: 0.06, rate });
+      } else {
+        const rate = 0.5 + Math.random() * 1.0;
+        this.sound.play('bloop', { volume: 0.04, rate });
+      }
+      this._scheduleBleep();
+    });
+  }
+
+  _stopBleeps() {
+    if (this.bleepTimer) {
+      this.bleepTimer.destroy();
+      this.bleepTimer = null;
+    }
+  }
+
+  shutdown() {
+    this._stopBleeps();
   }
 }

@@ -297,30 +297,23 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // Collect all affected walls and assign colors
+    // Assign colors: enemy red dominates over player cyan on overlap
     const allWalls = new Set([...playerDist.keys(), ...enemyDist.keys()]);
-    const blendLevels = CONFIG.WALL_GLOW_BLEND;
 
     for (const wall of allWalls) {
-      const pd = playerDist.get(wall);
       const ed = enemyDist.get(wall);
+      const pd = playerDist.get(wall);
       let color = null;
 
-      if (pd !== undefined && ed !== undefined) {
-        // Both glows overlap — use purple blend (pick the closer distance)
-        const minDist = Math.min(pd, ed);
-        for (const level of blendLevels) {
-          if (minDist <= level.radius) { color = level.color; break; }
+      if (ed !== undefined) {
+        // Enemy glow takes priority
+        for (const level of alertLevels) {
+          if (ed <= level.radius) { color = level.color; break; }
         }
       } else if (pd !== undefined) {
         // Player glow only
         for (const level of glowLevels) {
           if (pd <= level.radius) { color = level.color; break; }
-        }
-      } else {
-        // Enemy glow only
-        for (const level of alertLevels) {
-          if (ed <= level.radius) { color = level.color; break; }
         }
       }
 

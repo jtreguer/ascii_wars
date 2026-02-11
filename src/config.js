@@ -102,12 +102,6 @@ export const CONFIG = {
     { radius: 1, color: '#bb0000' },  // inner — brightest red
     { radius: 2, color: '#770000' },  // outer — dimmer red
   ],
-  // Purple blend when player and enemy glow overlap
-  WALL_GLOW_BLEND: [
-    { radius: 1, color: '#8800bb' },  // inner — bright purple
-    { radius: 2, color: '#550077' },  // middle purple
-    { radius: 3, color: '#330055' },  // outer — dim purple
-  ],
 
   // Token
   TOKEN_CHAR: '0',
