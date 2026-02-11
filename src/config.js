@@ -17,7 +17,12 @@ export const CONFIG = {
     WHITE: '#ffffff',
     YELLOW: '#ffff00',
     DARK_GRAY: '#333333',
-    WALL: '#004444',
+    WALL: '#003333',
+    WALL_GLOW: [
+      { radius: 1, color: '#00bbbb' },  // inner — brightest
+      { radius: 2, color: '#007777' },  // middle
+      { radius: 3, color: '#005555' },  // outer — dimmest
+    ],
     FLOOR: '#000000',
     EXIT_LOCKED: '#444444',
     EXIT_UNLOCKED: '#00ff00',

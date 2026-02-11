@@ -129,6 +129,14 @@ export default class GameScene extends Phaser.Scene {
 
   _renderMaze() {
     this.wallTexts = [];
+    this.wallGrid = [];
+    for (let r = 0; r < CONFIG.GRID_ROWS; r++) {
+      this.wallGrid[r] = new Array(CONFIG.GRID_COLS).fill(null);
+    }
+    this._litWalls = [];
+    this._lastGlowCol = -1;
+    this._lastGlowRow = -1;
+
     for (let r = 0; r < CONFIG.GRID_ROWS; r++) {
       for (let c = 0; c < CONFIG.GRID_COLS; c++) {
         const cell = this.grid[r][c];
@@ -141,6 +149,7 @@ export default class GameScene extends Phaser.Scene {
             color: CONFIG.COLORS.WALL,
           }).setOrigin(0.5);
           this.wallTexts.push(t);
+          this.wallGrid[r][c] = t;
         } else if (cell === CELL_TYPE.EXIT) {
           this.exitText = this.add.text(pos.x, pos.y, CONFIG.MAZE_EXIT_CHAR, {
             fontFamily: CONFIG.FONT_FAMILY,
@@ -206,6 +215,41 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  _updateWallGlow() {
+    const pc = this.player.col;
+    const pr = this.player.row;
+    if (pc === this._lastGlowCol && pr === this._lastGlowRow) return;
+    this._lastGlowCol = pc;
+    this._lastGlowRow = pr;
+
+    // Reset previously lit walls
+    for (const wall of this._litWalls) {
+      wall.setColor(CONFIG.COLORS.WALL);
+    }
+    this._litWalls = [];
+
+    const glowLevels = CONFIG.COLORS.WALL_GLOW;
+    const maxRadius = glowLevels[glowLevels.length - 1].radius;
+
+    for (let r = pr - maxRadius; r <= pr + maxRadius; r++) {
+      if (r < 0 || r >= CONFIG.GRID_ROWS) continue;
+      for (let c = pc - maxRadius; c <= pc + maxRadius; c++) {
+        if (c < 0 || c >= CONFIG.GRID_COLS) continue;
+        const wall = this.wallGrid[r][c];
+        if (!wall) continue;
+
+        const dist = Math.max(Math.abs(c - pc), Math.abs(r - pr));
+        for (const level of glowLevels) {
+          if (dist <= level.radius) {
+            wall.setColor(level.color);
+            this._litWalls.push(wall);
+            break;
+          }
+        }
+      }
+    }
+  }
+
   update(time, delta) {
     if (this.levelComplete) return;
 
@@ -221,6 +265,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.player.update();
+    this._updateWallGlow();
 
     if (!this.player.alive) return;
 
