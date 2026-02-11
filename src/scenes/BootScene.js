@@ -1,8 +1,16 @@
 import { CONFIG } from '../config.js';
 
+const SOUNDS = ['pew', 'death', 'triumph', 'token', 'kill', 'hit', 'bleep', 'bloop'];
+
 export default class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene');
+  }
+
+  preload() {
+    for (const name of SOUNDS) {
+      this.load.audio(name, `assets/audio/${name}.wav`);
+    }
   }
 
   create() {
