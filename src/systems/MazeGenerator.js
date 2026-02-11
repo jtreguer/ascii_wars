@@ -1,13 +1,8 @@
 import { CELL_TYPE } from '../utils/constants.js';
-import { shuffleArray } from '../utils/math.js';
+import { shuffleArray, randomInt } from '../utils/math.js';
 
-/**
- * Generates a maze using recursive backtracker algorithm.
- * Operates on a grid where odd-indexed cells are rooms and
- * even-indexed cells are walls/corridors between rooms.
- */
 export default class MazeGenerator {
-  generate(cols, rows) {
+  generate(cols, rows, roomCount, roomMin, roomMax) {
     // Ensure odd dimensions for proper maze structure
     const mazeCols = cols % 2 === 0 ? cols - 1 : cols;
     const mazeRows = rows % 2 === 0 ? rows - 1 : rows;
@@ -33,7 +28,6 @@ export default class MazeGenerator {
         stack.pop();
       } else {
         const next = unvisited[Math.floor(Math.random() * unvisited.length)];
-        // Carve the wall between current and next
         const wallCol = current.col + (next.col - current.col) / 2;
         const wallRow = current.row + (next.row - current.row) / 2;
         grid[wallRow][wallCol] = CELL_TYPE.FLOOR;
@@ -53,7 +47,48 @@ export default class MazeGenerator {
       }
     }
 
+    // Carve rooms onto the maze
+    this._carveRooms(finalGrid, cols, rows, roomCount, roomMin, roomMax);
+
+    // Carve a small room at the start so the player isn't boxed in
+    this._carveRoom(finalGrid, 1, 1, 3, 3, cols, rows);
+
     return finalGrid;
+  }
+
+  _carveRooms(grid, cols, rows, count, minSize, maxSize) {
+    // Collect floor cells as candidate room anchors
+    const floors = [];
+    for (let r = 2; r < rows - maxSize - 1; r++) {
+      for (let c = 2; c < cols - maxSize - 1; c++) {
+        if (grid[r][c] === CELL_TYPE.FLOOR) {
+          floors.push({ col: c, row: r });
+        }
+      }
+    }
+
+    const shuffled = shuffleArray(floors);
+    let placed = 0;
+
+    for (const anchor of shuffled) {
+      if (placed >= count) break;
+
+      const w = randomInt(minSize, maxSize);
+      const h = randomInt(minSize, maxSize);
+
+      this._carveRoom(grid, anchor.col, anchor.row, w, h, cols, rows);
+      placed++;
+    }
+  }
+
+  _carveRoom(grid, startCol, startRow, width, height, cols, rows) {
+    for (let r = startRow; r < startRow + height && r < rows - 1; r++) {
+      for (let c = startCol; c < startCol + width && c < cols - 1; c++) {
+        if (r > 0 && c > 0) {
+          grid[r][c] = CELL_TYPE.FLOOR;
+        }
+      }
+    }
   }
 
   _getUnvisitedNeighbors(grid, col, row, mazeCols, mazeRows) {
@@ -79,7 +114,6 @@ export default class MazeGenerator {
   placeExit(grid) {
     const rows = grid.length;
     const cols = grid[0].length;
-    // Place exit at the floor cell farthest from (1,1)
     let bestDist = 0;
     let exitPos = { col: cols - 2, row: rows - 2 };
 

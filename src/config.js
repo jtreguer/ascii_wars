@@ -65,6 +65,9 @@ export const CONFIG = {
   MAZE_FLOOR_CHAR: ' ',
   MAZE_EXIT_CHAR: 'X',
   MAZE_BORDER: 1, // cells of border wall
+  ROOM_COUNT: 6, // rooms to carve after maze generation
+  ROOM_MIN_SIZE: 2, // min width/height of a room
+  ROOM_MAX_SIZE: 5, // max width/height of a room
 
   // Level progression
   LEVEL: {

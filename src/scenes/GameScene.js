@@ -23,7 +23,10 @@ export default class GameScene extends Phaser.Scene {
   create() {
     // Generate maze
     const mazeGen = new MazeGenerator();
-    this.grid = mazeGen.generate(CONFIG.GRID_COLS, CONFIG.GRID_ROWS);
+    this.grid = mazeGen.generate(
+      CONFIG.GRID_COLS, CONFIG.GRID_ROWS,
+      CONFIG.ROOM_COUNT, CONFIG.ROOM_MIN_SIZE, CONFIG.ROOM_MAX_SIZE,
+    );
     this.exitPos = mazeGen.placeExit(this.grid);
     this.startPos = mazeGen.getStartPosition();
     this.gridManager = new GridManager(this.grid);
