@@ -31,7 +31,7 @@ export default class MenuScene extends Phaser.Scene {
 
     // Controls
     this.add.text(cx, y, 'ARROW KEYS - MOVE    SPACE - AIM    P - PAUSE', {
-      ...style('12px', CONFIG.COLORS.DARK_GRAY),
+      ...style('12px', CONFIG.COLORS.YELLOW),
       align: 'center',
     }).setOrigin(0.5);
     y += rowH + 4;
