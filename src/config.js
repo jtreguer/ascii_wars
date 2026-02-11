@@ -100,6 +100,8 @@ export const CONFIG = {
     { maxSeconds: 120, multiplier: 2 },
   ],
   TIME_BONUS_DEFAULT: 1,
+  DISC_BONUS: [0, 150, 500, 1000], // indexed by discs remaining (0, 1, 2, 3)
+  LEVEL_RECAP_DURATION: 2800, // ms to show bonus recap before next level
 
   // Audio
   AUDIO: {

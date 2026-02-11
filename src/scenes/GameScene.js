@@ -259,19 +259,24 @@ export default class GameScene extends Phaser.Scene {
         break;
       }
     }
-    const bonus = CONFIG.LEVEL_COMPLETE_BONUS * multiplier;
-    this.score += bonus;
+    const timeBonus = CONFIG.LEVEL_COMPLETE_BONUS * multiplier;
+
+    // Disc bonus
+    const discIdx = Math.min(this.discsRemaining, CONFIG.DISC_BONUS.length - 1);
+    const discBonus = CONFIG.DISC_BONUS[discIdx];
+
+    this.score += timeBonus + discBonus;
     this.soundManager?.playTriumph();
 
-    // Show bonus text briefly
+    // Show bonus recap
     const uiScene = this.scene.get('UIScene');
     if (uiScene && uiScene.scene.isActive()) {
       uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
-      uiScene.events.emit('show-bonus', bonus, multiplier);
+      uiScene.events.emit('show-bonus', timeBonus, multiplier, discBonus, this.discsRemaining);
     }
 
     this.cameras.main.flash(300, 0, 255, 0);
-    this.time.delayedCall(500, () => {
+    this.time.delayedCall(CONFIG.LEVEL_RECAP_DURATION, () => {
       this._cleanup();
       this.scene.restart({ level: this.level + 1, score: this.score, lives: this.lives });
     });

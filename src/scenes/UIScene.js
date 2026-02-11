@@ -85,14 +85,20 @@ export default class UIScene extends Phaser.Scene {
       else this.multiplierText.setColor(CONFIG.COLORS.RED);
     });
 
-    this.events.on('show-bonus', (bonus, multiplier) => {
-      this.bonusText.setText(`+${bonus} (x${multiplier})`);
+    this.events.on('show-bonus', (timeBonus, multiplier, discBonus, discsLeft) => {
+      let lines = `TIME  +${timeBonus} (x${multiplier})`;
+      if (discBonus > 0) {
+        lines += `\nDISCS +${discBonus} (${discsLeft} left)`;
+      }
+      this.bonusText.setText(lines);
+      this.bonusText.setY(CONFIG.GAME_HEIGHT / 2 - 40);
       this.bonusText.setAlpha(1);
       this.tweens.add({
         targets: this.bonusText,
         alpha: 0,
         y: CONFIG.GAME_HEIGHT / 2 - 80,
-        duration: 1500,
+        duration: 2500,
+        delay: 800,
         ease: 'Power2',
       });
     });
