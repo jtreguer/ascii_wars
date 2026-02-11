@@ -48,6 +48,37 @@ export default class UIScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5).setAlpha(0).setDepth(100);
 
+    // Pause overlay (hidden by default)
+    this.pauseOverlay = this.add.rectangle(
+      CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT / 2,
+      CONFIG.GAME_WIDTH, CONFIG.GAME_HEIGHT,
+      0x000000, 0.6,
+    ).setDepth(200).setVisible(false);
+
+    this.pauseText = this.add.text(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT / 2 - 20, '- PAUSED -', {
+      fontFamily: CONFIG.FONT_FAMILY,
+      fontSize: '28px',
+      color: CONFIG.COLORS.YELLOW,
+      align: 'center',
+    }).setOrigin(0.5).setDepth(201).setVisible(false);
+
+    this.pauseHint = this.add.text(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT / 2 + 20, 'PRESS P TO RESUME', {
+      fontFamily: CONFIG.FONT_FAMILY,
+      fontSize: '14px',
+      color: CONFIG.COLORS.WHITE,
+    }).setOrigin(0.5).setDepth(201).setVisible(false);
+
+    this.paused = false;
+    this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    this.pauseKey.on('down', () => {
+      if (!this.paused) return;
+      this.paused = false;
+      this.pauseOverlay.setVisible(false);
+      this.pauseText.setVisible(false);
+      this.pauseHint.setVisible(false);
+      this.scene.resume('GameScene');
+    });
+
     // Listen for events from GameScene
     this.events.on(EVENTS.SCORE_CHANGED, (score) => {
       this.scoreText.setText(String(score));
@@ -85,6 +116,13 @@ export default class UIScene extends Phaser.Scene {
       else this.multiplierText.setColor(CONFIG.COLORS.RED);
     });
 
+    this.events.on('pause-game', () => {
+      this.paused = true;
+      this.pauseOverlay.setVisible(true);
+      this.pauseText.setVisible(true);
+      this.pauseHint.setVisible(true);
+    });
+
     this.events.on('show-bonus', (timeBonus, multiplier, discBonus, discsLeft) => {
       let lines = `TIME  +${timeBonus} (x${multiplier})`;
       if (discBonus > 0) {
@@ -111,5 +149,7 @@ export default class UIScene extends Phaser.Scene {
     this.events.off(EVENTS.LIVES_CHANGED);
     this.events.off(EVENTS.TIMER_CHANGED);
     this.events.off('show-bonus');
+    this.events.off('pause-game');
+    if (this.pauseKey) this.pauseKey.removeAllListeners();
   }
 }

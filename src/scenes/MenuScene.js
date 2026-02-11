@@ -27,6 +27,7 @@ export default class MenuScene extends Phaser.Scene {
     this.add.text(cx, 400, [
       'ARROW KEYS - MOVE',
       'SPACE - THROW DISC',
+      'P - PAUSE',
       'COLLECT ALL [0] TOKENS',
       'REACH THE [X] EXIT',
       'AVOID [X] [+] ENEMIES',

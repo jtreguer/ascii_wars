@@ -91,6 +91,16 @@ export default class GameScene extends Phaser.Scene {
       this.soundManager.startAmbient();
     }
 
+    // Pause key
+    this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    this.pauseKey.on('down', () => {
+      const uiScene = this.scene.get('UIScene');
+      if (uiScene && uiScene.scene.isActive()) {
+        uiScene.events.emit('pause-game');
+      }
+      this.scene.pause();
+    });
+
     // Emit initial UI state (delay to ensure UIScene is ready)
     this.time.delayedCall(50, () => {
       const uiScene = this.scene.get('UIScene');
@@ -334,6 +344,7 @@ export default class GameScene extends Phaser.Scene {
   _cleanup() {
     this.events.off('player-throw-disc', this._onThrowDisc, this);
     this.events.off('disc-moved', this._onDiscMoved, this);
+    if (this.pauseKey) this.pauseKey.removeAllListeners();
     this.soundManager?.destroy();
   }
 
