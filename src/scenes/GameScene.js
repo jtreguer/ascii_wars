@@ -155,13 +155,19 @@ export default class GameScene extends Phaser.Scene {
     const down = this._isWall(r + 1, c);
     const left = this._isWall(r, c - 1);
     const right = this._isWall(r, c + 1);
-    const hasH = left || right;
-    const hasV = up || down;
 
-    if (hasH && hasV) return '+';
-    if (hasH) return '-';
-    if (hasV) return '|';
-    return '+';
+    if (up && down && left && right) return '╋';
+    if (up && down && right) return '┣';
+    if (up && down && left) return '┫';
+    if (down && left && right) return '┳';
+    if (up && left && right) return '┻';
+    if (down && right) return '┏';
+    if (down && left) return '┓';
+    if (up && right) return '┗';
+    if (up && left) return '┛';
+    if (left || right) return '━';
+    if (up || down) return '┃';
+    return '╋';
   }
 
   _renderMaze() {
