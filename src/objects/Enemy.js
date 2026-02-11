@@ -12,6 +12,7 @@ export default class Enemy {
     this.alive = true;
     this.charIndex = 0;
     this.chasing = false;
+    this.alertMode = false;
 
     // Patrol roaming
     this.patrolAnchor = { col, row };
@@ -59,8 +60,9 @@ export default class Enemy {
     const playerRow = this.scene.player?.row;
     const playerAlive = this.scene.player?.alive;
 
+    const chaseRange = this.alertMode ? CONFIG.ENEMY_CHASE_RANGE * 2 : CONFIG.ENEMY_CHASE_RANGE;
     const inRange = playerCol !== undefined && playerRow !== undefined && playerAlive &&
-      manhattanDistance(this.col, this.row, playerCol, playerRow) <= CONFIG.ENEMY_CHASE_RANGE;
+      manhattanDistance(this.col, this.row, playerCol, playerRow) <= chaseRange;
 
     // Update chase state
     if (inRange && !this.chasing) {
@@ -176,6 +178,13 @@ export default class Enemy {
         return;
       }
     }
+  }
+
+  activateAlert() {
+    if (!this.alive) return;
+    this.alertMode = true;
+    this.chasing = true;
+    this.text.setColor(CONFIG.COLORS.RED);
   }
 
   die() {

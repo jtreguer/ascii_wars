@@ -361,6 +361,7 @@ export default class GameScene extends Phaser.Scene {
         if (this.collectedTokens >= this.totalTokens) {
           this.allTokensCollected = true;
           this._unlockExit();
+          this._alertAllEnemies();
         }
       }
     }
@@ -417,6 +418,13 @@ export default class GameScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       });
     }
+  }
+
+  _alertAllEnemies() {
+    for (const enemy of this.enemies) {
+      enemy.activateAlert();
+    }
+    this.soundManager?.playAlertSiren();
   }
 
   _nextLevel() {
