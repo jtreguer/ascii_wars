@@ -47,7 +47,7 @@ export const CONFIG = {
   CELL_FONT_SIZE: '18px',
 
   // Player
-  PLAYER_CHAR: '\u263B', // ☻
+  PLAYER_CHAR: '\u1330', // ጰ (Ethiopic syllable pha)
   PLAYER_MOVE_SPEED: 120, // ms per grid step (tween duration)
   PLAYER_INITIAL_DISCS: 3,
   PLAYER_LIVES: 3,
