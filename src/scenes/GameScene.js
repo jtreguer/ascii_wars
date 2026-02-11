@@ -8,6 +8,7 @@ import Enemy from '../objects/Enemy.js';
 import Disc from '../objects/Disc.js';
 import Token from '../objects/Token.js';
 import SpeedBonus from '../objects/SpeedBonus.js';
+import DiscCarrier from '../objects/DiscCarrier.js';
 import SoundManager from '../systems/SoundManager.js';
 
 export default class GameScene extends Phaser.Scene {
@@ -67,17 +68,31 @@ export default class GameScene extends Phaser.Scene {
     this.totalTokens = tokenCount;
     this.collectedTokens = 0;
 
-    // Spawn speed bonus (level 2+)
-    this.speedBonus = null;
-    let speedBonusOffset = 0;
-    if (this.level >= CONFIG.SPEED_BONUS.MIN_LEVEL && spawnPositions.length > tokenCount) {
-      const bonusPos = spawnPositions[tokenCount];
-      this.speedBonus = new SpeedBonus(this, this.gridManager, bonusPos.col, bonusPos.row);
-      speedBonusOffset = 1;
+    // Spawn speed bonuses (level 2+: 1, level 4+: 2)
+    this.speedBonuses = [];
+    let pickupOffset = 0;
+    if (this.level >= CONFIG.SPEED_BONUS.MIN_LEVEL) {
+      const count = this.level >= CONFIG.SPEED_BONUS.TWO_MIN_LEVEL ? 2 : 1;
+      for (let i = 0; i < count && tokenCount + pickupOffset < spawnPositions.length; i++) {
+        const pos = spawnPositions[tokenCount + pickupOffset];
+        this.speedBonuses.push(new SpeedBonus(this, this.gridManager, pos.col, pos.row));
+        pickupOffset++;
+      }
     }
 
-    // Spawn enemies (use positions after tokens + bonus, excluding player line of sight)
-    const enemyPositions = spawnPositions.slice(tokenCount + speedBonusOffset).filter(
+    // Spawn disc carriers (level 5-7: 1, level 8+: 2)
+    this.discCarriers = [];
+    if (this.level >= CONFIG.DISC_CARRIER.MIN_LEVEL) {
+      const count = this.level >= CONFIG.DISC_CARRIER.TWO_MIN_LEVEL ? 2 : 1;
+      for (let i = 0; i < count && tokenCount + pickupOffset < spawnPositions.length; i++) {
+        const pos = spawnPositions[tokenCount + pickupOffset];
+        this.discCarriers.push(new DiscCarrier(this, this.gridManager, pos.col, pos.row));
+        pickupOffset++;
+      }
+    }
+
+    // Spawn enemies (use positions after tokens + pickups, excluding player line of sight)
+    const enemyPositions = spawnPositions.slice(tokenCount + pickupOffset).filter(
       pos => manhattanDistance(pos.col, pos.row, this.startPos.col, this.startPos.row) >= CONFIG.ENEMY_MIN_SPAWN_DISTANCE &&
         !this._hasLineOfSight(pos.col, pos.row, this.startPos.col, this.startPos.row),
     );
@@ -154,8 +169,6 @@ export default class GameScene extends Phaser.Scene {
       this.wallGrid[r] = new Array(CONFIG.GRID_COLS).fill(null);
     }
     this._litWalls = [];
-    this._lastGlowCol = -1;
-    this._lastGlowRow = -1;
 
     for (let r = 0; r < CONFIG.GRID_ROWS; r++) {
       for (let c = 0; c < CONFIG.GRID_COLS; c++) {
@@ -236,18 +249,18 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _updateWallGlow() {
-    const pc = this.player.col;
-    const pr = this.player.row;
-    if (pc === this._lastGlowCol && pr === this._lastGlowRow) return;
-    this._lastGlowCol = pc;
-    this._lastGlowRow = pr;
-
     // Reset previously lit walls
     for (const wall of this._litWalls) {
       wall.setColor(CONFIG.COLORS.WALL);
     }
     this._litWalls = [];
 
+    // Track which walls are colored (to handle overlap priority)
+    const colored = new Set();
+
+    // Player glow (cyan, higher priority)
+    const pc = this.player.col;
+    const pr = this.player.row;
     const glowLevels = CONFIG.COLORS.WALL_GLOW;
     const maxRadius = glowLevels[glowLevels.length - 1].radius;
 
@@ -263,8 +276,29 @@ export default class GameScene extends Phaser.Scene {
           if (dist <= level.radius) {
             wall.setColor(level.color);
             this._litWalls.push(wall);
+            colored.add(wall);
             break;
           }
+        }
+      }
+    }
+
+    // Enemy alert glow (red, radius 1, only when chasing)
+    const alertRadius = CONFIG.ENEMY_ALERT_GLOW.RADIUS;
+    const alertColor = CONFIG.ENEMY_ALERT_GLOW.COLOR;
+    for (const enemy of this.enemies) {
+      if (!enemy.alive || !enemy.chasing) continue;
+      const ec = enemy.col;
+      const er = enemy.row;
+      for (let r = er - alertRadius; r <= er + alertRadius; r++) {
+        if (r < 0 || r >= CONFIG.GRID_ROWS) continue;
+        for (let c = ec - alertRadius; c <= ec + alertRadius; c++) {
+          if (c < 0 || c >= CONFIG.GRID_COLS) continue;
+          const wall = this.wallGrid[r][c];
+          if (!wall || colored.has(wall)) continue;
+          wall.setColor(alertColor);
+          this._litWalls.push(wall);
+          colored.add(wall);
         }
       }
     }
@@ -310,9 +344,20 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // Check speed bonus collection
-    if (this.speedBonus && !this.speedBonus.collected) {
-      if (this.player.col === this.speedBonus.col && this.player.row === this.speedBonus.row) {
-        this._collectSpeedBonus();
+    for (const sb of this.speedBonuses) {
+      if (sb.collected) continue;
+      if (this.player.col === sb.col && this.player.row === sb.row) {
+        this._collectSpeedBonus(sb);
+        break;
+      }
+    }
+
+    // Check disc carrier collection
+    for (const dc of this.discCarriers) {
+      if (dc.collected) continue;
+      if (this.player.col === dc.col && this.player.row === dc.row) {
+        this._collectDiscCarrier(dc);
+        break;
       }
     }
 
@@ -392,8 +437,8 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  _collectSpeedBonus() {
-    this.speedBonus.collect();
+  _collectSpeedBonus(speedBonus) {
+    speedBonus.collect();
     this.soundManager?.playSpeedBonus();
     this.speedBonusActive = true;
     this.player.speedMultiplier = CONFIG.SPEED_BONUS.MULTIPLIER;
@@ -431,6 +476,16 @@ export default class GameScene extends Phaser.Scene {
         uiScene.events.emit(EVENTS.SPEED_BONUS_CHANGED, 0);
       }
     });
+  }
+
+  _collectDiscCarrier(carrier) {
+    carrier.collect();
+    this.soundManager?.playDiscCarrier();
+    this.discsRemaining = CONFIG.LEVEL.DISCS_PER_LEVEL;
+    const uiScene = this.scene.get('UIScene');
+    if (uiScene && uiScene.scene.isActive()) {
+      uiScene.events.emit(EVENTS.DISCS_CHANGED, this.discsRemaining);
+    }
   }
 
   _playerHit() {
@@ -527,6 +582,7 @@ export default class GameScene extends Phaser.Scene {
     this.enemies?.forEach(e => e.destroy());
     this.discs?.forEach(d => d.destroy());
     this.tokens?.forEach(t => t.destroy());
-    this.speedBonus?.destroy();
+    this.speedBonuses?.forEach(sb => sb.destroy());
+    this.discCarriers?.forEach(dc => dc.destroy());
   }
 }

@@ -81,7 +81,26 @@ export const CONFIG = {
     DURATION: 10000,       // ms of 2x speed
     MULTIPLIER: 2,
     MIN_LEVEL: 2,
+    TWO_MIN_LEVEL: 4,     // level at which 2 speed bonuses spawn
     VOLUME: 0.25,
+  },
+
+  // Disc Carrier
+  DISC_CARRIER: {
+    CHAR: 'o',
+    BLINK_INTERVAL: 400,   // ms between white/orange blink
+    MOVE_SPEED: 600,       // ms per grid step (slow)
+    MOVE_PAUSE: 800,       // ms pause between moves
+    PATROL_RADIUS: 5,
+    MIN_LEVEL: 5,
+    TWO_MIN_LEVEL: 8,     // level at which 2 disc carriers spawn
+    VOLUME: 0.25,
+  },
+
+  // Enemy alert glow
+  ENEMY_ALERT_GLOW: {
+    RADIUS: 1,
+    COLOR: '#bb0000',
   },
 
   // Token

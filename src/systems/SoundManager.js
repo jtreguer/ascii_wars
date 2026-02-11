@@ -87,6 +87,10 @@ export default class SoundManager {
     this.scene.sound.play('speed', { volume: CONFIG.SPEED_BONUS.VOLUME });
   }
 
+  playDiscCarrier() {
+    this.scene.sound.play('disc_carrier', { volume: CONFIG.DISC_CARRIER.VOLUME });
+  }
+
   playAlertSiren() {
     if (!this.ctx || !this.masterGain) return;
     const cfg = AUDIO().SFX;
