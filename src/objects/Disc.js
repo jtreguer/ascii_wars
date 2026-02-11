@@ -39,6 +39,10 @@ export default class Disc {
     this.text.setActive(true);
     this.text.setAlpha(1);
 
+    // Check collision at starting cell (enemy 1 cell from player)
+    this.scene.events.emit('disc-moved', this);
+    if (!this.active) return;
+
     this._moveStep();
   }
 
