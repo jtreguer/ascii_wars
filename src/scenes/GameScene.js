@@ -91,9 +91,11 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // Spawn enemies (use positions after tokens + pickups, excluding player line of sight)
+    // Spawn enemies (use positions after tokens + pickups)
+    // Must be beyond chase range so they don't start in alert mode
+    const minSpawnDist = Math.max(CONFIG.ENEMY_MIN_SPAWN_DISTANCE, CONFIG.ENEMY_CHASE_RANGE + 1);
     const enemyPositions = spawnPositions.slice(tokenCount + pickupOffset).filter(
-      pos => manhattanDistance(pos.col, pos.row, this.startPos.col, this.startPos.row) >= CONFIG.ENEMY_MIN_SPAWN_DISTANCE &&
+      pos => manhattanDistance(pos.col, pos.row, this.startPos.col, this.startPos.row) >= minSpawnDist &&
         !this._hasLineOfSight(pos.col, pos.row, this.startPos.col, this.startPos.row),
     );
     const enemyCount = Math.min(
