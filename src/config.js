@@ -1,4 +1,7 @@
 export const CONFIG = {
+  // Dev
+  DEV_MODE: true,
+
   // Display
   GAME_WIDTH: 800,
   GAME_HEIGHT: 600,
@@ -44,7 +47,7 @@ export const CONFIG = {
   CELL_FONT_SIZE: '18px',
 
   // Player
-  PLAYER_CHAR: '@',
+  PLAYER_CHAR: '\u263B', // ☻
   PLAYER_MOVE_SPEED: 120, // ms per grid step (tween duration)
   PLAYER_INITIAL_DISCS: 3,
   PLAYER_LIVES: 3,
@@ -70,6 +73,16 @@ export const CONFIG = {
   DISC_MOVE_SPEED: 60, // ms per grid step
   DISC_MAX_RANGE: 15, // cells before despawn
   DISC_POOL_SIZE: 10,
+
+  // Speed Bonus
+  SPEED_BONUS: {
+    CHARS: ['S', 's'],
+    SWAP_INTERVAL: 500,    // ms between S/s alternation
+    DURATION: 10000,       // ms of 2x speed
+    MULTIPLIER: 2,
+    MIN_LEVEL: 2,
+    VOLUME: 0.25,
+  },
 
   // Token
   TOKEN_CHAR: '0',

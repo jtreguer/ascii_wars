@@ -48,6 +48,13 @@ export default class UIScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5).setAlpha(0).setDepth(100);
 
+    // Speed bonus indicator (hidden by default)
+    this.speedText = this.add.text(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT - 8, '', {
+      fontFamily: CONFIG.FONT_FAMILY,
+      fontSize: '14px',
+      color: CONFIG.COLORS.WHITE,
+    }).setOrigin(0.5, 1).setDepth(50).setVisible(false);
+
     // Pause overlay (hidden by default)
     this.pauseOverlay = this.add.rectangle(
       CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT / 2,
@@ -123,6 +130,15 @@ export default class UIScene extends Phaser.Scene {
       else this.multiplierText.setColor(CONFIG.COLORS.RED);
     });
 
+    this.events.on(EVENTS.SPEED_BONUS_CHANGED, (remaining) => {
+      if (remaining > 0) {
+        this.speedText.setText(`SPEED x2  ${remaining}s`);
+        this.speedText.setVisible(true);
+      } else {
+        this.speedText.setVisible(false);
+      }
+    });
+
     this.events.on('show-bonus', (timeBonus, multiplier, discBonus, discsLeft) => {
       let lines = `TIME  +${timeBonus} (x${multiplier})`;
       if (discBonus > 0) {
@@ -148,6 +164,7 @@ export default class UIScene extends Phaser.Scene {
     this.events.off(EVENTS.LEVEL_CHANGED);
     this.events.off(EVENTS.LIVES_CHANGED);
     this.events.off(EVENTS.TIMER_CHANGED);
+    this.events.off(EVENTS.SPEED_BONUS_CHANGED);
     this.events.off('show-bonus');
     if (this.pauseKey) this.pauseKey.removeAllListeners();
   }

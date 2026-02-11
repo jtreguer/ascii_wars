@@ -30,4 +30,5 @@ export const EVENTS = {
   ENEMY_KILLED: 'enemy-killed',
   LIVES_CHANGED: 'lives-changed',
   TIMER_CHANGED: 'timer-changed',
+  SPEED_BONUS_CHANGED: 'speed-bonus-changed',
 };

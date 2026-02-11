@@ -7,6 +7,7 @@ import Player from '../objects/Player.js';
 import Enemy from '../objects/Enemy.js';
 import Disc from '../objects/Disc.js';
 import Token from '../objects/Token.js';
+import SpeedBonus from '../objects/SpeedBonus.js';
 import SoundManager from '../systems/SoundManager.js';
 
 export default class GameScene extends Phaser.Scene {
@@ -25,6 +26,8 @@ export default class GameScene extends Phaser.Scene {
     this.dying = false;
     this.elapsedMs = 0;
     this.lastEmittedSecond = -1;
+    this.speedBonusActive = false;
+    this.speedBonusTimer = null;
   }
 
   create() {
@@ -64,8 +67,17 @@ export default class GameScene extends Phaser.Scene {
     this.totalTokens = tokenCount;
     this.collectedTokens = 0;
 
-    // Spawn enemies (use positions after tokens, excluding player line of sight)
-    const enemyPositions = spawnPositions.slice(tokenCount).filter(
+    // Spawn speed bonus (level 2+)
+    this.speedBonus = null;
+    let speedBonusOffset = 0;
+    if (this.level >= CONFIG.SPEED_BONUS.MIN_LEVEL && spawnPositions.length > tokenCount) {
+      const bonusPos = spawnPositions[tokenCount];
+      this.speedBonus = new SpeedBonus(this, this.gridManager, bonusPos.col, bonusPos.row);
+      speedBonusOffset = 1;
+    }
+
+    // Spawn enemies (use positions after tokens + bonus, excluding player line of sight)
+    const enemyPositions = spawnPositions.slice(tokenCount + speedBonusOffset).filter(
       pos => manhattanDistance(pos.col, pos.row, this.startPos.col, this.startPos.row) >= CONFIG.ENEMY_MIN_SPAWN_DISTANCE &&
         !this._hasLineOfSight(pos.col, pos.row, this.startPos.col, this.startPos.row),
     );
@@ -94,6 +106,14 @@ export default class GameScene extends Phaser.Scene {
     this.soundManager = new SoundManager(this);
     if (this.soundManager.init()) {
       this.soundManager.startAmbient();
+    }
+
+    // Dev mode: S key to skip level
+    if (CONFIG.DEV_MODE) {
+      this.skipKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+      this.skipKey.on('down', () => {
+        if (!this.levelComplete) this._nextLevel();
+      });
     }
 
     // Emit initial UI state (delay to ensure UIScene is ready)
@@ -289,6 +309,13 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
+    // Check speed bonus collection
+    if (this.speedBonus && !this.speedBonus.collected) {
+      if (this.player.col === this.speedBonus.col && this.player.row === this.speedBonus.row) {
+        this._collectSpeedBonus();
+      }
+    }
+
     // Check disc-enemy collisions every frame (supplements event-based check)
     for (const disc of this.discs) {
       this._checkDiscHit(disc);
@@ -360,8 +387,59 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  _collectSpeedBonus() {
+    this.speedBonus.collect();
+    this.soundManager?.playSpeedBonus();
+    this.speedBonusActive = true;
+    this.player.speedMultiplier = CONFIG.SPEED_BONUS.MULTIPLIER;
+
+    // Tint player to indicate speed boost
+    this.player.text.setColor(CONFIG.COLORS.WHITE);
+
+    const uiScene = this.scene.get('UIScene');
+
+    // Countdown timer for UI
+    let remaining = CONFIG.SPEED_BONUS.DURATION / 1000;
+    if (uiScene && uiScene.scene.isActive()) {
+      uiScene.events.emit(EVENTS.SPEED_BONUS_CHANGED, remaining);
+    }
+
+    this.speedBonusCountdown = this.time.addEvent({
+      delay: 1000,
+      repeat: remaining - 1,
+      callback: () => {
+        remaining--;
+        if (uiScene && uiScene.scene.isActive()) {
+          uiScene.events.emit(EVENTS.SPEED_BONUS_CHANGED, remaining);
+        }
+      },
+    });
+
+    // End speed boost after duration
+    this.speedBonusTimer = this.time.delayedCall(CONFIG.SPEED_BONUS.DURATION, () => {
+      this.speedBonusActive = false;
+      this.player.speedMultiplier = 1;
+      if (this.player.alive) {
+        this.player.text.setColor(CONFIG.COLORS.CYAN);
+      }
+      if (uiScene && uiScene.scene.isActive()) {
+        uiScene.events.emit(EVENTS.SPEED_BONUS_CHANGED, 0);
+      }
+    });
+  }
+
   _playerHit() {
     this.dying = true;
+
+    // Cancel speed bonus if active
+    if (this.speedBonusActive) {
+      this.speedBonusActive = false;
+      if (this.speedBonusTimer) { this.speedBonusTimer.destroy(); this.speedBonusTimer = null; }
+      if (this.speedBonusCountdown) { this.speedBonusCountdown.destroy(); this.speedBonusCountdown = null; }
+      const ui = this.scene.get('UIScene');
+      if (ui && ui.scene.isActive()) ui.events.emit(EVENTS.SPEED_BONUS_CHANGED, 0);
+    }
+
     this.player.die();
     this.soundManager?.playHit();
     this.soundManager?.playDeath();
@@ -432,6 +510,9 @@ export default class GameScene extends Phaser.Scene {
   _cleanup() {
     this.events.off('player-throw-disc', this._onThrowDisc, this);
     this.events.off('disc-moved', this._onDiscMoved, this);
+    if (this.skipKey) this.skipKey.removeAllListeners();
+    if (this.speedBonusTimer) this.speedBonusTimer.destroy();
+    if (this.speedBonusCountdown) this.speedBonusCountdown.destroy();
     this.soundManager?.destroy();
   }
 
@@ -441,5 +522,6 @@ export default class GameScene extends Phaser.Scene {
     this.enemies?.forEach(e => e.destroy());
     this.discs?.forEach(d => d.destroy());
     this.tokens?.forEach(t => t.destroy());
+    this.speedBonus?.destroy();
   }
 }

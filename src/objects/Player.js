@@ -11,6 +11,7 @@ export default class Player {
     this.isMoving = false;
     this.alive = true;
     this.aiming = false;
+    this.speedMultiplier = 1;
 
     const pos = gridManager.gridToPixel(col, row);
     this.text = scene.add.text(pos.x, pos.y, CONFIG.PLAYER_CHAR, {
@@ -95,7 +96,7 @@ export default class Player {
       targets: this.text,
       x: target.x,
       y: target.y,
-      duration: CONFIG.PLAYER_MOVE_SPEED,
+      duration: CONFIG.PLAYER_MOVE_SPEED / this.speedMultiplier,
       ease: 'Linear',
       onComplete: () => {
         this.isMoving = false;
@@ -125,6 +126,7 @@ export default class Player {
     this.isMoving = false;
     this.aiming = false;
     this.facing = DIRECTION.RIGHT;
+    this.speedMultiplier = 1;
 
     const pos = this.gridManager.gridToPixel(col, row);
     this.text.setPosition(pos.x, pos.y);

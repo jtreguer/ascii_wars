@@ -83,6 +83,10 @@ export default class SoundManager {
     this.scene.sound.play('hit', { volume: AUDIO().SFX.HIT_VOLUME });
   }
 
+  playSpeedBonus() {
+    this.scene.sound.play('speed', { volume: CONFIG.SPEED_BONUS.VOLUME });
+  }
+
   playAlertSiren() {
     if (!this.ctx || !this.masterGain) return;
     const cfg = AUDIO().SFX;
