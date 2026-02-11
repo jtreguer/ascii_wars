@@ -39,8 +39,99 @@ export default class VictoryScene extends Phaser.Scene {
       color: CONFIG.COLORS.MAGENTA,
     }).setOrigin(0.5);
 
+    // Ambient beep/boop sounds
+    this._scheduleBleep();
+
+    // Show name entry — leaderboard and restart prompt come after
+    this._showNameEntry(cx, 255);
+  }
+
+  _showNameEntry(cx, y) {
+    this.nameChars = [];
+    this.nameCursor = 0;
+
+    this.nameLabel = this.add.text(cx, y, 'ENTER YOUR NAME:', {
+      fontFamily: CONFIG.FONT_FAMILY,
+      fontSize: '14px',
+      color: CONFIG.COLORS.YELLOW,
+    }).setOrigin(0.5);
+
+    this.nameTexts = [];
+    const slotSpacing = 28;
+    const startX = cx - slotSpacing;
+    for (let i = 0; i < 3; i++) {
+      const txt = this.add.text(startX + i * slotSpacing, y + 28, '_', {
+        fontFamily: CONFIG.FONT_FAMILY,
+        fontSize: '22px',
+        color: CONFIG.COLORS.CYAN,
+      }).setOrigin(0.5);
+      this.nameTexts.push(txt);
+    }
+
+    // Blink current slot
+    this.nameBlink = this.tweens.add({
+      targets: this.nameTexts[0],
+      alpha: 0.2,
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    this.nameKeyHandler = (event) => {
+      const key = event.key.toUpperCase();
+      if (key.length === 1 && key >= 'A' && key <= 'Z' && this.nameCursor < 3) {
+        this.nameBlink.stop();
+        this.nameTexts[this.nameCursor].setAlpha(1);
+        this.nameTexts[this.nameCursor].setText(key);
+        this.nameChars.push(key);
+        this.nameCursor++;
+        this.sound.play('bleep', { volume: 0.08, rate: 1.5 });
+
+        if (this.nameCursor < 3) {
+          this.nameBlink = this.tweens.add({
+            targets: this.nameTexts[this.nameCursor],
+            alpha: 0.2,
+            duration: 400,
+            yoyo: true,
+            repeat: -1,
+          });
+        } else {
+          this.input.keyboard.off('keydown', this.nameKeyHandler);
+          this.time.delayedCall(400, () => this._onNameEntered(this.nameChars.join('')));
+        }
+      } else if (event.key === 'Backspace' && this.nameCursor > 0) {
+        this.nameBlink.stop();
+        if (this.nameCursor < 3) {
+          this.nameTexts[this.nameCursor].setAlpha(1);
+        }
+        this.nameCursor--;
+        this.nameChars.pop();
+        this.nameTexts[this.nameCursor].setText('_');
+        this.sound.play('bloop', { volume: 0.05, rate: 0.8 });
+
+        this.nameBlink = this.tweens.add({
+          targets: this.nameTexts[this.nameCursor],
+          alpha: 0.2,
+          duration: 400,
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+    };
+
+    this.input.keyboard.on('keydown', this.nameKeyHandler);
+  }
+
+  _onNameEntered(name) {
+    const cx = CONFIG.GAME_WIDTH / 2;
+
+    // Remove name entry UI
+    if (this.nameBlink) this.nameBlink.stop();
+    this.nameLabel.destroy();
+    this.nameTexts.forEach(t => t.destroy());
+
     // Save score and show leaderboard
-    const scores = saveScore(this.finalScore, CONFIG.MAX_LEVEL, true);
+    const scores = saveScore(this.finalScore, CONFIG.MAX_LEVEL, true, name);
     const rank = getRank(scores, this.finalScore);
     this._buildLeaderboard(cx, 250, scores, rank);
 
@@ -60,10 +151,7 @@ export default class VictoryScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
-    // Ambient beep/boop sounds
-    this._scheduleBleep();
-
-    this.time.delayedCall(500, () => {
+    this.time.delayedCall(300, () => {
       this.input.keyboard.once('keydown-SPACE', () => {
         this._stopBleeps();
         this.scene.start('MenuScene');
@@ -92,6 +180,7 @@ export default class VictoryScene extends Phaser.Scene {
       const entry = scores[i];
       const y = listTop + i * rowH;
       const rankStr = String(i + 1).padStart(2, ' ');
+      const nameStr = entry.name || '???';
       const scoreStr = String(entry.score).padStart(7, ' ');
       const lvlStr = `L${entry.level}`;
       const tag = entry.won ? ' WIN' : '';
@@ -100,7 +189,7 @@ export default class VictoryScene extends Phaser.Scene {
       const color = isCurrent ? CONFIG.COLORS.CYAN : CONFIG.COLORS.WHITE;
       const prefix = isCurrent ? '>' : ' ';
 
-      const text = this.add.text(cx, y, `${prefix}${rankStr}. ${scoreStr}  ${lvlStr}${tag}`, {
+      const text = this.add.text(cx, y, `${prefix}${rankStr}. ${nameStr} ${scoreStr}  ${lvlStr}${tag}`, {
         fontFamily: CONFIG.FONT_FAMILY,
         fontSize: '13px',
         color,

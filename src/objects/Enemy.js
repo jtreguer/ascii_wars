@@ -66,14 +66,22 @@ export default class Enemy {
       manhattanDistance(this.col, this.row, playerCol, playerRow) <= chaseRange;
 
     // Update chase state
-    if (inRange && !this.chasing) {
+    if (this.alertMode) {
+      // Alert enemies stay red, silently toggle chase based on doubled range
+      const wasChasing = this.chasing;
+      this.chasing = inRange;
+      if (wasChasing && !this.chasing) {
+        this.patrolAnchor = { col: this.col, row: this.row };
+        this.patrolMoveCount = 0;
+        this.relocateThreshold = this._nextRelocateThreshold();
+      }
+    } else if (inRange && !this.chasing) {
       this.chasing = true;
       this.text.setColor(CONFIG.COLORS.RED);
       this.scene.soundManager?.playAlertSiren();
     } else if (!inRange && this.chasing) {
       this.chasing = false;
       this.text.setColor(CONFIG.COLORS.MAGENTA);
-      // Anchor to where we stopped chasing
       this.patrolAnchor = { col: this.col, row: this.row };
       this.patrolMoveCount = 0;
       this.relocateThreshold = this._nextRelocateThreshold();

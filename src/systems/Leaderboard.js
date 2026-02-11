@@ -1,9 +1,9 @@
 const STORAGE_KEY = 'ascii-wars-leaderboard';
 const MAX_ENTRIES = 20;
 
-export function saveScore(score, level, won) {
+export function saveScore(score, level, won, name = '???') {
   const entries = getScores();
-  entries.push({ score, level, won, date: Date.now() });
+  entries.push({ score, level, won, name, date: Date.now() });
   entries.sort((a, b) => b.score - a.score);
   if (entries.length > MAX_ENTRIES) entries.length = MAX_ENTRIES;
   try {
