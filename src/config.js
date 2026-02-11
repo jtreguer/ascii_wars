@@ -42,6 +42,9 @@ export const CONFIG = {
   PLAYER_CHAR: '@',
   PLAYER_MOVE_SPEED: 120, // ms per grid step (tween duration)
   PLAYER_INITIAL_DISCS: 3,
+  PLAYER_LIVES: 3,
+  RESPAWN_DELAY: 1200,       // ms before respawn after death
+  RESPAWN_INVULN_DURATION: 1600, // ms of invulnerability after respawn
 
   // Enemy
   ENEMY_CHARS: ['X', '+'],
@@ -83,4 +86,38 @@ export const CONFIG = {
   // Scoring
   ENEMY_KILL_SCORE: 250,
   LEVEL_COMPLETE_BONUS: 500,
+
+  // Audio
+  AUDIO: {
+    MASTER_VOLUME: 0.3,
+    AMBIENT: {
+      DRONE_FREQUENCY: 55,        // Hz (A1)
+      DRONE_VOLUME: 0.07,
+      DRONE_FILTER_FREQ: 200,     // Hz lowpass cutoff
+      DRONE_FILTER_Q: 2,
+      DRONE_LFO_RATE: 0.15,       // Hz — slow pulsing
+      DRONE_LFO_DEPTH: 100,       // Hz modulation range
+      BLEEP_INTERVAL_MIN: 500,    // ms between random sounds
+      BLEEP_INTERVAL_MAX: 2500,
+      BLEEP_VOLUME: 0.08,
+      BLOOP_VOLUME: 0.06,
+    },
+    SFX: {
+      DEATH_NOTES: [330, 262, 220],     // E4 → C4 → A3 descending
+      DEATH_NOTE_DURATION: 0.18,
+      DEATH_NOTE_GAP: 0.08,
+      DEATH_VOLUME: 0.15,
+
+      TRIUMPH_NOTES: [523, 659, 784, 1047], // C5 → E5 → G5 → C6
+      TRIUMPH_NOTE_DURATION: 0.15,
+      TRIUMPH_NOTE_GAP: 0.05,
+      TRIUMPH_FINAL_SUSTAIN: 0.4,
+      TRIUMPH_VOLUME: 0.12,
+
+      TOKEN_FREQUENCY: 1319,            // E6
+      TOKEN_DETUNE: 8,                  // Hz offset for chorus shimmer
+      TOKEN_DURATION: 0.18,
+      TOKEN_VOLUME: 0.10,
+    },
+  },
 };

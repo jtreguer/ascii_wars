@@ -10,6 +10,7 @@ export default class Player {
     this.facing = DIRECTION.RIGHT;
     this.isMoving = false;
     this.alive = true;
+    this.aiming = false;
 
     const pos = gridManager.gridToPixel(col, row);
     this.text = scene.add.text(pos.x, pos.y, CONFIG.PLAYER_CHAR, {
@@ -30,17 +31,36 @@ export default class Player {
   _setupInput() {
     this.cursors = this.scene.input.keyboard.createCursorKeys();
     this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.spaceKey.on('down', () => this._throwDisc());
+    this.spaceKey.on('down', () => this._toggleAiming());
   }
 
-  _throwDisc() {
-    if (!this.alive || this.facing === DIRECTION.NONE) return;
-    this.scene.events.emit('player-throw-disc', this.col, this.row, this.facing);
+  _toggleAiming() {
+    if (!this.alive || this.isMoving) return;
+    this.aiming = !this.aiming;
+    this.text.setColor(this.aiming ? CONFIG.COLORS.ORANGE : CONFIG.COLORS.CYAN);
   }
 
   update() {
     if (!this.alive || this.isMoving) return;
 
+    if (this.aiming) {
+      // In aiming mode: JustDown so held keys don't instantly fire
+      let dir = DIRECTION.NONE;
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) dir = DIRECTION.UP;
+      else if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) dir = DIRECTION.DOWN;
+      else if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) dir = DIRECTION.LEFT;
+      else if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) dir = DIRECTION.RIGHT;
+
+      if (dir !== DIRECTION.NONE) {
+        this.facing = dir;
+        this.scene.events.emit('player-throw-disc', this.col, this.row, dir);
+        this.aiming = false;
+        this.text.setColor(CONFIG.COLORS.CYAN);
+      }
+      return;
+    }
+
+    // Normal movement
     let dir = DIRECTION.NONE;
     if (this.cursors.up.isDown) dir = DIRECTION.UP;
     else if (this.cursors.down.isDown) dir = DIRECTION.DOWN;
@@ -75,6 +95,7 @@ export default class Player {
 
   die() {
     this.alive = false;
+    this.aiming = false;
     this.text.setColor(CONFIG.COLORS.RED);
     this.scene.tweens.add({
       targets: this.text,
@@ -84,6 +105,22 @@ export default class Player {
       duration: 500,
       ease: 'Power2',
     });
+  }
+
+  respawn(col, row) {
+    this.scene.tweens.killTweensOf(this.text);
+    this.col = col;
+    this.row = row;
+    this.alive = true;
+    this.isMoving = false;
+    this.aiming = false;
+    this.facing = DIRECTION.RIGHT;
+
+    const pos = this.gridManager.gridToPixel(col, row);
+    this.text.setPosition(pos.x, pos.y);
+    this.text.setAlpha(1);
+    this.text.setScale(1);
+    this.text.setColor(CONFIG.COLORS.CYAN);
   }
 
   destroy() {

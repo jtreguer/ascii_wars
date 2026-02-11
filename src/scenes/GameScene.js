@@ -6,6 +6,7 @@ import Player from '../objects/Player.js';
 import Enemy from '../objects/Enemy.js';
 import Disc from '../objects/Disc.js';
 import Token from '../objects/Token.js';
+import SoundManager from '../systems/SoundManager.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -15,9 +16,12 @@ export default class GameScene extends Phaser.Scene {
   init(data) {
     this.level = data.level || 1;
     this.score = data.score || 0;
+    this.lives = data.lives ?? CONFIG.PLAYER_LIVES;
     this.discsRemaining = CONFIG.LEVEL.DISCS_PER_LEVEL;
     this.allTokensCollected = false;
     this.levelComplete = false;
+    this.invulnerable = false;
+    this.dying = false;
   }
 
   create() {
@@ -79,6 +83,12 @@ export default class GameScene extends Phaser.Scene {
     this.events.on('player-throw-disc', this._onThrowDisc, this);
     this.events.on('disc-moved', this._onDiscMoved, this);
 
+    // Audio
+    this.soundManager = new SoundManager(this);
+    if (this.soundManager.init()) {
+      this.soundManager.startAmbient();
+    }
+
     // Emit initial UI state (delay to ensure UIScene is ready)
     this.time.delayedCall(50, () => {
       const uiScene = this.scene.get('UIScene');
@@ -86,6 +96,7 @@ export default class GameScene extends Phaser.Scene {
         uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
         uiScene.events.emit(EVENTS.DISCS_CHANGED, this.discsRemaining);
         uiScene.events.emit(EVENTS.LEVEL_CHANGED, this.level);
+        uiScene.events.emit(EVENTS.LIVES_CHANGED, this.lives);
       }
     });
   }
@@ -177,6 +188,7 @@ export default class GameScene extends Phaser.Scene {
         token.collect();
         this.collectedTokens++;
         this.score += CONFIG.TOKEN_SCORE;
+        this.soundManager?.playTokenCollect();
         const uiScene = this.scene.get('UIScene');
         if (uiScene && uiScene.scene.isActive()) {
           uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
@@ -190,11 +202,13 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // Check enemy collision
-    for (const enemy of this.enemies) {
-      if (!enemy.alive) continue;
-      if (this.player.col === enemy.col && this.player.row === enemy.row) {
-        this._gameOver();
-        return;
+    if (!this.invulnerable && !this.dying) {
+      for (const enemy of this.enemies) {
+        if (!enemy.alive) continue;
+        if (this.player.col === enemy.col && this.player.row === enemy.row) {
+          this._playerHit();
+          return;
+        }
       }
     }
 
@@ -221,29 +235,67 @@ export default class GameScene extends Phaser.Scene {
   _nextLevel() {
     this.levelComplete = true;
     this.score += CONFIG.LEVEL_COMPLETE_BONUS;
+    this.soundManager?.playTriumph();
 
     this.cameras.main.flash(300, 0, 255, 0);
     this.time.delayedCall(500, () => {
       this._cleanup();
-      this.scene.restart({ level: this.level + 1, score: this.score });
+      this.scene.restart({ level: this.level + 1, score: this.score, lives: this.lives });
     });
   }
 
-  _gameOver() {
+  _playerHit() {
+    this.dying = true;
     this.player.die();
+    this.soundManager?.playDeath();
     this.cameras.main.shake(300, 0.02);
     this.cameras.main.flash(300, 255, 0, 0);
 
-    this.time.delayedCall(1000, () => {
-      this._cleanup();
-      this.scene.stop('UIScene');
-      this.scene.start('GameOverScene', { score: this.score, level: this.level });
+    this.lives--;
+    const uiScene = this.scene.get('UIScene');
+    if (uiScene && uiScene.scene.isActive()) {
+      uiScene.events.emit(EVENTS.LIVES_CHANGED, this.lives);
+    }
+
+    if (this.lives > 0) {
+      // Respawn at start with current game state
+      this.time.delayedCall(CONFIG.RESPAWN_DELAY, () => {
+        this._respawnPlayer();
+      });
+    } else {
+      // Final death — game over
+      this.time.delayedCall(1000, () => {
+        this._cleanup();
+        this.scene.stop('UIScene');
+        this.scene.start('GameOverScene', { score: this.score, level: this.level });
+      });
+    }
+  }
+
+  _respawnPlayer() {
+    this.dying = false;
+    this.invulnerable = true;
+    this.player.respawn(this.startPos.col, this.startPos.row);
+
+    // Blink during invulnerability
+    this.tweens.add({
+      targets: this.player.text,
+      alpha: 0.2,
+      duration: 100,
+      yoyo: true,
+      repeat: 7,
+      ease: 'Linear',
+      onComplete: () => {
+        this.player.text.setAlpha(1);
+        this.invulnerable = false;
+      },
     });
   }
 
   _cleanup() {
     this.events.off('player-throw-disc', this._onThrowDisc, this);
     this.events.off('disc-moved', this._onDiscMoved, this);
+    this.soundManager?.destroy();
   }
 
   shutdown() {

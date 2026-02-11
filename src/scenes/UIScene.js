@@ -20,8 +20,11 @@ export default class UIScene extends Phaser.Scene {
     this.add.text(250, 4, 'DISCS:', style);
     this.discsText = this.add.text(320, 4, '0', { ...style, color: CONFIG.COLORS.ORANGE });
 
-    this.add.text(500, 4, 'LEVEL:', style);
-    this.levelText = this.add.text(570, 4, '1', { ...style, color: CONFIG.COLORS.MAGENTA });
+    this.add.text(480, 4, 'LEVEL:', style);
+    this.levelText = this.add.text(545, 4, '1', { ...style, color: CONFIG.COLORS.MAGENTA });
+
+    this.add.text(650, 4, 'LIVES:', style);
+    this.livesText = this.add.text(720, 4, '3', { ...style, color: CONFIG.COLORS.RED });
 
     // Listen for events from GameScene
     this.events.on(EVENTS.SCORE_CHANGED, (score) => {
@@ -35,11 +38,16 @@ export default class UIScene extends Phaser.Scene {
     this.events.on(EVENTS.LEVEL_CHANGED, (level) => {
       this.levelText.setText(String(level));
     });
+
+    this.events.on(EVENTS.LIVES_CHANGED, (lives) => {
+      this.livesText.setText(String(lives));
+    });
   }
 
   shutdown() {
     this.events.off(EVENTS.SCORE_CHANGED);
     this.events.off(EVENTS.DISCS_CHANGED);
     this.events.off(EVENTS.LEVEL_CHANGED);
+    this.events.off(EVENTS.LIVES_CHANGED);
   }
 }
