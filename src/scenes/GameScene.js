@@ -22,6 +22,8 @@ export default class GameScene extends Phaser.Scene {
     this.levelComplete = false;
     this.invulnerable = false;
     this.dying = false;
+    this.elapsedMs = 0;
+    this.lastEmittedSecond = -1;
   }
 
   create() {
@@ -176,8 +178,19 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  update() {
+  update(time, delta) {
     if (this.levelComplete) return;
+
+    // Track level time
+    this.elapsedMs += delta;
+    const sec = Math.floor(this.elapsedMs / 1000);
+    if (sec !== this.lastEmittedSecond) {
+      this.lastEmittedSecond = sec;
+      const uiScene = this.scene.get('UIScene');
+      if (uiScene && uiScene.scene.isActive()) {
+        uiScene.events.emit(EVENTS.TIMER_CHANGED, sec);
+      }
+    }
 
     this.player.update();
 
@@ -236,8 +249,26 @@ export default class GameScene extends Phaser.Scene {
 
   _nextLevel() {
     this.levelComplete = true;
-    this.score += CONFIG.LEVEL_COMPLETE_BONUS;
+
+    // Time bonus
+    const seconds = Math.floor(this.elapsedMs / 1000);
+    let multiplier = CONFIG.TIME_BONUS_DEFAULT;
+    for (const tier of CONFIG.TIME_BONUS) {
+      if (seconds < tier.maxSeconds) {
+        multiplier = tier.multiplier;
+        break;
+      }
+    }
+    const bonus = CONFIG.LEVEL_COMPLETE_BONUS * multiplier;
+    this.score += bonus;
     this.soundManager?.playTriumph();
+
+    // Show bonus text briefly
+    const uiScene = this.scene.get('UIScene');
+    if (uiScene && uiScene.scene.isActive()) {
+      uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
+      uiScene.events.emit('show-bonus', bonus, multiplier);
+    }
 
     this.cameras.main.flash(300, 0, 255, 0);
     this.time.delayedCall(500, () => {

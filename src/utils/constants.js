@@ -29,4 +29,5 @@ export const EVENTS = {
   ALL_TOKENS_COLLECTED: 'all-tokens-collected',
   ENEMY_KILLED: 'enemy-killed',
   LIVES_CHANGED: 'lives-changed',
+  TIMER_CHANGED: 'timer-changed',
 };

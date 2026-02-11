@@ -89,6 +89,13 @@ export const CONFIG = {
   // Scoring
   ENEMY_KILL_SCORE: 250,
   LEVEL_COMPLETE_BONUS: 500,
+  TIME_BONUS: [
+    { maxSeconds: 30, multiplier: 10 },
+    { maxSeconds: 60, multiplier: 5 },
+    { maxSeconds: 90, multiplier: 3 },
+    { maxSeconds: 120, multiplier: 2 },
+  ],
+  TIME_BONUS_DEFAULT: 1,
 
   // Audio
   AUDIO: {
