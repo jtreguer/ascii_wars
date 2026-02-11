@@ -83,6 +83,10 @@ export default class SoundManager {
     this.scene.sound.play('hit', { volume: AUDIO().SFX.HIT_VOLUME });
   }
 
+  playWallHit() {
+    this.scene.sound.play('wall_hit', { volume: AUDIO().SFX.WALL_HIT_VOLUME });
+  }
+
   playSpeedBonus() {
     this.scene.sound.play('speed', { volume: CONFIG.SPEED_BONUS.VOLUME });
   }

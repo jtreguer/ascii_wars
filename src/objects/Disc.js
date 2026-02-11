@@ -14,7 +14,7 @@ export default class Disc {
     this.text = scene.add.text(0, 0, CONFIG.DISC_CHAR, {
       fontFamily: CONFIG.FONT_FAMILY,
       fontSize: CONFIG.CELL_FONT_SIZE,
-      color: CONFIG.COLORS.ORANGE,
+      color: CONFIG.DISC_COLOR,
     }).setOrigin(0.5);
     this.text.setDepth(15);
     this.text.setVisible(false);
@@ -54,12 +54,13 @@ export default class Disc {
     const newRow = this.row + delta.dy;
 
     if (!this.gridManager.isWalkable(newCol, newRow) || this.distanceTraveled >= CONFIG.DISC_MAX_RANGE) {
+      if (!this.gridManager.isWalkable(newCol, newRow)) {
+        this.scene.soundManager?.playWallHit();
+      }
       this.deactivate();
       return;
     }
 
-    this.col = newCol;
-    this.row = newRow;
     this.distanceTraveled++;
 
     const target = this.gridManager.gridToPixel(newCol, newRow);
@@ -70,6 +71,8 @@ export default class Disc {
       duration: CONFIG.DISC_MOVE_SPEED,
       ease: 'Linear',
       onComplete: () => {
+        this.col = newCol;
+        this.row = newRow;
         // Check enemy collision at new position
         this.scene.events.emit('disc-moved', this);
         this._moveStep();

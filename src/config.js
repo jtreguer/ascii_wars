@@ -69,6 +69,7 @@ export const CONFIG = {
   ENEMY_MIN_SPAWN_DISTANCE: 6,  // min manhattan distance from player start
 
   // Disc
+  DISC_COLOR: '#88ffff',
   DISC_CHAR: 'o',
   DISC_MOVE_SPEED: 60, // ms per grid step
   DISC_MAX_RANGE: 15, // cells before despawn
@@ -96,6 +97,11 @@ export const CONFIG = {
     TWO_MIN_LEVEL: 8,     // level at which 2 disc carriers spawn
     VOLUME: 0.25,
   },
+
+  // Disc glow
+  DISC_GLOW: [
+    { radius: 1, color: '#66cccc' },
+  ],
 
   // Enemy alert glow
   ENEMY_ALERT_GLOW: [
@@ -186,6 +192,8 @@ export const CONFIG = {
       HIT_FREQUENCY: 180,              // Hz — low buzz impact
       HIT_DURATION: 0.35,
       HIT_VOLUME: 0.25,
+
+      WALL_HIT_VOLUME: 0.20,
 
       ALERT_FREQ_LOW: 400,            // Hz — siren low frequency
       ALERT_FREQ_HIGH: 900,           // Hz — siren high frequency

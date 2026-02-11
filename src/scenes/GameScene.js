@@ -299,23 +299,50 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // Assign colors: enemy red dominates over player cyan on overlap
-    const allWalls = new Set([...playerDist.keys(), ...enemyDist.keys()]);
+    // Build disc glow map: wall -> closest Chebyshev distance to any active disc
+    const discDist = new Map();
+    const discLevels = CONFIG.DISC_GLOW;
+    const maxDiscRadius = discLevels[discLevels.length - 1].radius;
+
+    for (const disc of this.discs) {
+      if (!disc.active) continue;
+      const dc = disc.col;
+      const dr = disc.row;
+      for (let r = dr - maxDiscRadius; r <= dr + maxDiscRadius; r++) {
+        if (r < 0 || r >= CONFIG.GRID_ROWS) continue;
+        for (let c = dc - maxDiscRadius; c <= dc + maxDiscRadius; c++) {
+          if (c < 0 || c >= CONFIG.GRID_COLS) continue;
+          const wall = this.wallGrid[r][c];
+          if (!wall) continue;
+          const dist = Math.max(Math.abs(c - dc), Math.abs(r - dr));
+          const prev = discDist.get(wall);
+          if (prev === undefined || dist < prev) {
+            discDist.set(wall, dist);
+          }
+        }
+      }
+    }
+
+    // Assign colors: enemy red > player cyan > disc cyan (priority order)
+    const allWalls = new Set([...playerDist.keys(), ...enemyDist.keys(), ...discDist.keys()]);
 
     for (const wall of allWalls) {
       const ed = enemyDist.get(wall);
       const pd = playerDist.get(wall);
+      const dd = discDist.get(wall);
       let color = null;
 
       if (ed !== undefined) {
-        // Enemy glow takes priority
         for (const level of alertLevels) {
           if (ed <= level.radius) { color = level.color; break; }
         }
       } else if (pd !== undefined) {
-        // Player glow only
         for (const level of glowLevels) {
           if (pd <= level.radius) { color = level.color; break; }
+        }
+      } else if (dd !== undefined) {
+        for (const level of discLevels) {
+          if (dd <= level.radius) { color = level.color; break; }
         }
       }
 

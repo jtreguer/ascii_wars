@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { DIRECTION, DIRECTION_DELTA, CELL_TYPE } from '../utils/constants.js';
 import { manhattanDistance, shuffleArray } from '../utils/math.js';
+import { findPath } from '../systems/Pathfinder.js';
 
 export default class Enemy {
   constructor(scene, gridManager, col, row) {
@@ -123,6 +124,17 @@ export default class Enemy {
   }
 
   _chaseDirection(playerCol, playerRow) {
+    if (this.alertMode) {
+      const path = findPath(this.gridManager, this.col, this.row, playerCol, playerRow);
+      if (path && path.length > 0) {
+        const next = path[0];
+        const dx = next.col - this.col;
+        const dy = next.row - this.row;
+        for (const [dir, d] of Object.entries(DIRECTION_DELTA)) {
+          if (d.dx === dx && d.dy === dy) return dir;
+        }
+      }
+    }
     return this._moveToward(playerCol, playerRow) || this._randomWalkable();
   }
 
