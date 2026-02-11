@@ -255,51 +255,78 @@ export default class GameScene extends Phaser.Scene {
     }
     this._litWalls = [];
 
-    // Track which walls are colored (to handle overlap priority)
-    const colored = new Set();
-
-    // Player glow (cyan, higher priority)
+    // Build player glow map: wall -> closest Chebyshev distance to player
+    const playerDist = new Map();
     const pc = this.player.col;
     const pr = this.player.row;
     const glowLevels = CONFIG.COLORS.WALL_GLOW;
-    const maxRadius = glowLevels[glowLevels.length - 1].radius;
+    const maxPlayerRadius = glowLevels[glowLevels.length - 1].radius;
 
-    for (let r = pr - maxRadius; r <= pr + maxRadius; r++) {
+    for (let r = pr - maxPlayerRadius; r <= pr + maxPlayerRadius; r++) {
       if (r < 0 || r >= CONFIG.GRID_ROWS) continue;
-      for (let c = pc - maxRadius; c <= pc + maxRadius; c++) {
+      for (let c = pc - maxPlayerRadius; c <= pc + maxPlayerRadius; c++) {
         if (c < 0 || c >= CONFIG.GRID_COLS) continue;
         const wall = this.wallGrid[r][c];
         if (!wall) continue;
-
         const dist = Math.max(Math.abs(c - pc), Math.abs(r - pr));
-        for (const level of glowLevels) {
-          if (dist <= level.radius) {
-            wall.setColor(level.color);
-            this._litWalls.push(wall);
-            colored.add(wall);
-            break;
+        playerDist.set(wall, dist);
+      }
+    }
+
+    // Build enemy glow map: wall -> closest Chebyshev distance to any chasing enemy
+    const enemyDist = new Map();
+    const alertLevels = CONFIG.ENEMY_ALERT_GLOW;
+    const maxAlertRadius = alertLevels[alertLevels.length - 1].radius;
+
+    for (const enemy of this.enemies) {
+      if (!enemy.alive || !enemy.chasing) continue;
+      const ec = enemy.col;
+      const er = enemy.row;
+      for (let r = er - maxAlertRadius; r <= er + maxAlertRadius; r++) {
+        if (r < 0 || r >= CONFIG.GRID_ROWS) continue;
+        for (let c = ec - maxAlertRadius; c <= ec + maxAlertRadius; c++) {
+          if (c < 0 || c >= CONFIG.GRID_COLS) continue;
+          const wall = this.wallGrid[r][c];
+          if (!wall) continue;
+          const dist = Math.max(Math.abs(c - ec), Math.abs(r - er));
+          const prev = enemyDist.get(wall);
+          if (prev === undefined || dist < prev) {
+            enemyDist.set(wall, dist);
           }
         }
       }
     }
 
-    // Enemy alert glow (red, radius 1, only when chasing)
-    const alertRadius = CONFIG.ENEMY_ALERT_GLOW.RADIUS;
-    const alertColor = CONFIG.ENEMY_ALERT_GLOW.COLOR;
-    for (const enemy of this.enemies) {
-      if (!enemy.alive || !enemy.chasing) continue;
-      const ec = enemy.col;
-      const er = enemy.row;
-      for (let r = er - alertRadius; r <= er + alertRadius; r++) {
-        if (r < 0 || r >= CONFIG.GRID_ROWS) continue;
-        for (let c = ec - alertRadius; c <= ec + alertRadius; c++) {
-          if (c < 0 || c >= CONFIG.GRID_COLS) continue;
-          const wall = this.wallGrid[r][c];
-          if (!wall || colored.has(wall)) continue;
-          wall.setColor(alertColor);
-          this._litWalls.push(wall);
-          colored.add(wall);
+    // Collect all affected walls and assign colors
+    const allWalls = new Set([...playerDist.keys(), ...enemyDist.keys()]);
+    const blendLevels = CONFIG.WALL_GLOW_BLEND;
+
+    for (const wall of allWalls) {
+      const pd = playerDist.get(wall);
+      const ed = enemyDist.get(wall);
+      let color = null;
+
+      if (pd !== undefined && ed !== undefined) {
+        // Both glows overlap — use purple blend (pick the closer distance)
+        const minDist = Math.min(pd, ed);
+        for (const level of blendLevels) {
+          if (minDist <= level.radius) { color = level.color; break; }
         }
+      } else if (pd !== undefined) {
+        // Player glow only
+        for (const level of glowLevels) {
+          if (pd <= level.radius) { color = level.color; break; }
+        }
+      } else {
+        // Enemy glow only
+        for (const level of alertLevels) {
+          if (ed <= level.radius) { color = level.color; break; }
+        }
+      }
+
+      if (color) {
+        wall.setColor(color);
+        this._litWalls.push(wall);
       }
     }
   }
