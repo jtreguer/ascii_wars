@@ -276,9 +276,11 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // Check snake head collision (body segments are not vulnerable)
+    // Check snake collision — head kills snake, body severs from hit point to tail
     for (const snake of this.snakes) {
       if (!snake.alive) continue;
+
+      // Head hit — full kill
       if (snake.col === disc.col && snake.row === disc.row) {
         snake.die();
         this._spawnDiscTrail(disc);
@@ -293,6 +295,25 @@ export default class GameScene extends Phaser.Scene {
           uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
         }
         return;
+      }
+
+      // Body hit — sever from hit segment to tail
+      for (let si = 0; si < snake.segments.length; si++) {
+        const seg = snake.segments[si];
+        if (seg.col === disc.col && seg.row === disc.row) {
+          const severed = snake.sever(si);
+          this._spawnDiscTrail(disc);
+          disc.deactivate();
+          this.cameras.main.shake(CONFIG.JUICE.KILL_SHAKE_DURATION, CONFIG.JUICE.KILL_SHAKE_INTENSITY * 0.6);
+          const segScore = severed * CONFIG.SNAKE.SEGMENT_SCORE;
+          this.score += segScore;
+          this._spawnPopup(seg.col, seg.row, `+${segScore}`, CONFIG.COLORS.GREEN);
+          const uiScene = this.scene.get('UIScene');
+          if (uiScene && uiScene.scene.isActive()) {
+            uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
+          }
+          return;
+        }
       }
     }
   }

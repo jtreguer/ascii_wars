@@ -20,6 +20,7 @@ export default class Snake {
     this.relocateThreshold = this._nextRelocateThreshold();
 
     // Body segments (index 0 = right behind head)
+    this.originalBodyLength = bodyPositions.length;
     this.segments = bodyPositions.map(pos => ({
       col: pos.col,
       row: pos.row,
@@ -71,12 +72,18 @@ export default class Snake {
       Math.floor(Math.random() * (s.RELOCATE_MAX_MOVES - s.RELOCATE_MIN_MOVES + 1));
   }
 
+  _getSpeedFactor() {
+    const lost = this.originalBodyLength - this.segments.length;
+    return Math.max(0.4, 1 - lost * CONFIG.SNAKE.SPEED_BOOST_PER_LOST_SEGMENT);
+  }
+
   _scheduleMove() {
     if (!this.alive) return;
     const s = CONFIG.SNAKE;
+    const factor = this._getSpeedFactor();
     const delay = this.chasing
-      ? s.CHASE_SPEED + s.CHASE_PAUSE
-      : s.MOVE_SPEED + s.PATROL_PAUSE;
+      ? (s.CHASE_SPEED + s.CHASE_PAUSE) * factor
+      : (s.MOVE_SPEED + s.PATROL_PAUSE) * factor;
 
     this.moveTimer = this.scene.time.delayedCall(delay, () => {
       this._move();
@@ -173,7 +180,7 @@ export default class Snake {
     this.row = newRow;
 
     // Tween all parts to new positions
-    const moveSpeed = this.chasing ? s.CHASE_SPEED : s.MOVE_SPEED;
+    const moveSpeed = (this.chasing ? s.CHASE_SPEED : s.MOVE_SPEED) * this._getSpeedFactor();
     const headTarget = this.gridManager.gridToPixel(newCol, newRow);
     this.scene.tweens.add({
       targets: this.text,
@@ -280,6 +287,36 @@ export default class Snake {
       if (seg.col === col && seg.row === row) return true;
     }
     return false;
+  }
+
+  sever(segmentIndex) {
+    // Remove segments from segmentIndex to tail, cascade explosions
+    const removed = this.segments.splice(segmentIndex);
+    const removedTexts = this.segmentTexts.splice(segmentIndex);
+
+    for (let i = 0; i < removed.length; i++) {
+      const seg = removed[i];
+      const segText = removedTexts[i];
+      this.scene.time.delayedCall(CONFIG.JUICE.SNAKE_CASCADE_DELAY * i, () => {
+        this.scene._spawnExplosion(seg.col, seg.row);
+        this.scene.soundManager?.playEnemyKill();
+        segText.setColor(CONFIG.SNAKE.CHASE_COLOR);
+        this.scene.tweens.add({
+          targets: segText,
+          alpha: 0,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          duration: 300,
+          ease: 'Power2',
+          onComplete: () => {
+            segText.setVisible(false);
+            segText.setActive(false);
+          },
+        });
+      });
+    }
+
+    return removed.length;
   }
 
   activateAlert() {

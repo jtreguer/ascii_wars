@@ -49,7 +49,7 @@ export const CONFIG = {
   // Player
   PLAYER_CHAR: '\u1330', // ጰ (Ethiopic syllable pha)
   PLAYER_MOVE_SPEED: 120, // ms per grid step (tween duration)
-  PLAYER_INITIAL_DISCS: 3,
+  PLAYER_INITIAL_DISCS: 6,
   PLAYER_LIVES: 3,
   RESPAWN_DELAY: 1200,       // ms before respawn after death
   RESPAWN_INVULN_DURATION: 1600, // ms of invulnerability after respawn
@@ -116,6 +116,8 @@ export const CONFIG = {
     COLOR: '#00ff00',
     CHASE_COLOR: '#ff0000',
     KILL_SCORE: 500,
+    SEGMENT_SCORE: 100,              // per body segment destroyed
+    SPEED_BOOST_PER_LOST_SEGMENT: 0.12, // 12% faster per lost segment
     MIN_LEVEL: 4,
     TWO_MIN_LEVEL: 7,
   },
@@ -154,7 +156,7 @@ export const CONFIG = {
     TOKENS_PER_LEVEL: 2,
     MAX_ENEMIES: 12,
     MAX_TOKENS: 20,
-    DISCS_PER_LEVEL: 3,
+    DISCS_PER_LEVEL: 6,
   },
 
   // Scoring
@@ -169,7 +171,7 @@ export const CONFIG = {
     { maxSeconds: 120, multiplier: 2 },
   ],
   TIME_BONUS_DEFAULT: 1,
-  DISC_BONUS: [0, 150, 500, 1000], // indexed by discs remaining (0, 1, 2, 3)
+  DISC_BONUS: [0, 100, 250, 500, 750, 1000, 1500], // indexed by discs remaining (0–6)
   LEVEL_RECAP_DURATION: 2800, // ms to show bonus recap before next level
 
   // Juice effects
