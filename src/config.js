@@ -118,6 +118,13 @@ export const CONFIG = {
     KILL_SCORE: 500,
     SEGMENT_SCORE: 100,              // per body segment destroyed
     SPEED_BOOST_PER_LOST_SEGMENT: 0.12, // 12% faster per lost segment
+    STUCK_THRESHOLD: 10000,           // ms stuck before eating a wall
+    WOBBLE_DURATION: 2000,            // ms of wobbling before the bite
+    WOBBLE_ANGLE: 0.3,               // radians oscillation amplitude
+    EAT_CHARS: ['#', '*', '.', '\u00B7'],  // debris chars when wall is eaten
+    EAT_PARTICLE_COUNT: 6,
+    EAT_PARTICLE_SPREAD: 16,
+    EAT_PARTICLE_DURATION: 400,
     MIN_LEVEL: 4,
     TWO_MIN_LEVEL: 7,
   },

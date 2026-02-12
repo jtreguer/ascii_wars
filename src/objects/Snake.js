@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { DIRECTION, DIRECTION_DELTA } from '../utils/constants.js';
+import { DIRECTION, DIRECTION_DELTA, CELL_TYPE } from '../utils/constants.js';
 import { manhattanDistance, shuffleArray } from '../utils/math.js';
 import { findPath } from '../systems/Pathfinder.js';
 
@@ -13,6 +13,9 @@ export default class Snake {
     this.alive = true;
     this.chasing = false;
     this.alertMode = false;
+    this.eating = false;
+    this.stuckMs = 0;
+    this.lastMoveDir = null;
 
     // Patrol roaming
     this.patrolAnchor = { col, row };
@@ -91,8 +94,21 @@ export default class Snake {
     });
   }
 
+  _getFacingDir() {
+    // Infer from head vs first body segment
+    if (this.segments.length > 0) {
+      const seg = this.segments[0];
+      const dx = this.col - seg.col;
+      const dy = this.row - seg.row;
+      for (const [dir, d] of Object.entries(DIRECTION_DELTA)) {
+        if (d.dx === dx && d.dy === dy) return dir;
+      }
+    }
+    return this.lastMoveDir;
+  }
+
   _move() {
-    if (!this.alive || this.isMoving) return;
+    if (!this.alive || this.isMoving || this.eating) return;
 
     const playerCol = this.scene.player?.col;
     const playerRow = this.scene.player?.row;
@@ -145,19 +161,31 @@ export default class Snake {
       targetDir = this._patrolDirection();
     }
 
-    if (!targetDir) return;
+    if (!targetDir) {
+      this._trackStuck();
+      return;
+    }
 
     const delta = DIRECTION_DELTA[targetDir];
     const newCol = this.col + delta.dx;
     const newRow = this.row + delta.dy;
 
-    if (!this.gridManager.isWalkable(newCol, newRow)) return;
+    if (!this.gridManager.isWalkable(newCol, newRow)) {
+      this._trackStuck();
+      return;
+    }
 
     // Don't move head into own body
     for (const seg of this.segments) {
-      if (seg.col === newCol && seg.row === newRow) return;
+      if (seg.col === newCol && seg.row === newRow) {
+        this._trackStuck();
+        return;
+      }
     }
 
+    // Successful move — reset stuck counter
+    this.stuckMs = 0;
+    this.lastMoveDir = targetDir;
     this.isMoving = true;
 
     // Snake movement: shift body segments
@@ -203,6 +231,97 @@ export default class Snake {
         ease: 'Linear',
       });
     }
+  }
+
+  _trackStuck() {
+    const s = CONFIG.SNAKE;
+    const factor = this._getSpeedFactor();
+    const tickMs = this.chasing
+      ? (s.CHASE_SPEED + s.CHASE_PAUSE) * factor
+      : (s.MOVE_SPEED + s.PATROL_PAUSE) * factor;
+    this.stuckMs += tickMs;
+
+    if (this.stuckMs >= s.STUCK_THRESHOLD) {
+      this.stuckMs = 0;
+      this._startEatWall();
+    }
+  }
+
+  _startEatWall() {
+    const facingDir = this._getFacingDir();
+    if (!facingDir) return;
+
+    const delta = DIRECTION_DELTA[facingDir];
+    const wallCol = this.col + delta.dx;
+    const wallRow = this.row + delta.dy;
+
+    // Don't eat border walls (outermost ring)
+    if (wallCol <= 0 || wallCol >= CONFIG.GRID_COLS - 1 ||
+        wallRow <= 0 || wallRow >= CONFIG.GRID_ROWS - 1) return;
+
+    // Must actually be a wall
+    if (this.gridManager.isWalkable(wallCol, wallRow)) return;
+
+    this.eating = true;
+    const s = CONFIG.SNAKE;
+
+    // Wobble the head — oscillate between -angle and +angle
+    this.scene.tweens.add({
+      targets: this.text,
+      rotation: { from: -s.WOBBLE_ANGLE, to: s.WOBBLE_ANGLE },
+      duration: 150,
+      yoyo: true,
+      repeat: Math.floor(s.WOBBLE_DURATION / 300) - 1,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        this.text.setRotation(0);
+        this._eatWall(wallCol, wallRow);
+      },
+    });
+  }
+
+  _eatWall(col, row) {
+    if (!this.alive) { this.eating = false; return; }
+    const s = CONFIG.SNAKE;
+
+    // Update the grid — wall becomes floor
+    this.scene.grid[row][col] = CELL_TYPE.FLOOR;
+
+    // Destroy wall text
+    const wallText = this.scene.wallGrid[row][col];
+    if (wallText) {
+      wallText.destroy();
+      this.scene.wallGrid[row][col] = null;
+    }
+
+    // Spawn debris particles
+    const pos = this.gridManager.gridToPixel(col, row);
+    const chars = s.EAT_CHARS;
+    for (let i = 0; i < s.EAT_PARTICLE_COUNT; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const angle = Math.random() * Math.PI * 2;
+      const dist = s.EAT_PARTICLE_SPREAD;
+      const particle = this.scene.add.text(pos.x, pos.y, char, {
+        fontFamily: CONFIG.FONT_FAMILY,
+        fontSize: CONFIG.JUICE.POPUP_FONT_SIZE,
+        color: CONFIG.COLORS.WALL,
+      }).setOrigin(0.5).setDepth(20);
+
+      this.scene.tweens.add({
+        targets: particle,
+        x: pos.x + Math.cos(angle) * dist,
+        y: pos.y + Math.sin(angle) * dist,
+        alpha: 0,
+        duration: s.EAT_PARTICLE_DURATION,
+        ease: 'Power2',
+        onComplete: () => particle.destroy(),
+      });
+    }
+
+    this.scene.soundManager?.playWallHit();
+
+    // Resume movement
+    this.eating = false;
   }
 
   _setColor(color) {
