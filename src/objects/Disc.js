@@ -32,6 +32,7 @@ export default class Disc {
     this.direction = direction;
     this.distanceTraveled = 0;
     this.active = true;
+    this.path = [{ col, row }];
 
     const pos = this.gridManager.gridToPixel(col, row);
     this.text.setPosition(pos.x, pos.y);
@@ -56,12 +57,14 @@ export default class Disc {
     if (!this.gridManager.isWalkable(newCol, newRow) || this.distanceTraveled >= CONFIG.DISC_MAX_RANGE) {
       if (!this.gridManager.isWalkable(newCol, newRow)) {
         this.scene.soundManager?.playWallHit();
+        this.scene.events.emit('disc-wall-hit', newCol, newRow, this);
       }
       this.deactivate();
       return;
     }
 
     this.distanceTraveled++;
+    this.path.push({ col: newCol, row: newRow });
 
     const target = this.gridManager.gridToPixel(newCol, newRow);
     this.scene.tweens.add({

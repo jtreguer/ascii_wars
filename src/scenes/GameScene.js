@@ -9,6 +9,7 @@ import Disc from '../objects/Disc.js';
 import Token from '../objects/Token.js';
 import SpeedBonus from '../objects/SpeedBonus.js';
 import DiscCarrier from '../objects/DiscCarrier.js';
+import Snake from '../objects/Snake.js';
 import SoundManager from '../systems/SoundManager.js';
 
 export default class GameScene extends Phaser.Scene {
@@ -109,6 +110,21 @@ export default class GameScene extends Phaser.Scene {
       this.enemies.push(new Enemy(this, this.gridManager, pos.col, pos.row));
     }
 
+    // Spawn snakes (level 4+: 1, level 7+: 2)
+    this.snakes = [];
+    if (this.level >= CONFIG.SNAKE.MIN_LEVEL) {
+      const snakeCount = this.level >= CONFIG.SNAKE.TWO_MIN_LEVEL ? 2 : 1;
+      const bodyLength = this.level >= 8 ? CONFIG.SNAKE.BODY_LENGTH_LEVEL_8 : CONFIG.SNAKE.BODY_LENGTH;
+      const remainingPositions = enemyPositions.slice(enemyCount);
+      for (let i = 0; i < snakeCount && i < remainingPositions.length; i++) {
+        const headPos = remainingPositions[i];
+        const bodyPositions = this._findSnakeBodyPositions(headPos.col, headPos.row, bodyLength);
+        if (bodyPositions) {
+          this.snakes.push(new Snake(this, this.gridManager, headPos.col, headPos.row, bodyPositions));
+        }
+      }
+    }
+
     // Disc pool
     this.discs = [];
     for (let i = 0; i < CONFIG.DISC_POOL_SIZE; i++) {
@@ -118,6 +134,7 @@ export default class GameScene extends Phaser.Scene {
     // Events
     this.events.on('player-throw-disc', this._onThrowDisc, this);
     this.events.on('disc-moved', this._onDiscMoved, this);
+    this.events.on('disc-wall-hit', this._onDiscWallHit, this);
 
     // Audio
     this.soundManager = new SoundManager(this);
@@ -244,6 +261,7 @@ export default class GameScene extends Phaser.Scene {
       if (!enemy.alive) continue;
       if (enemy.col === disc.col && enemy.row === disc.row) {
         enemy.die();
+        this._spawnDiscTrail(disc);
         disc.deactivate();
         this.soundManager?.playEnemyKill();
         this.cameras.main.shake(CONFIG.JUICE.KILL_SHAKE_DURATION, CONFIG.JUICE.KILL_SHAKE_INTENSITY);
@@ -254,7 +272,27 @@ export default class GameScene extends Phaser.Scene {
         if (uiScene && uiScene.scene.isActive()) {
           uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
         }
-        break;
+        return;
+      }
+    }
+
+    // Check snake head collision (body segments are not vulnerable)
+    for (const snake of this.snakes) {
+      if (!snake.alive) continue;
+      if (snake.col === disc.col && snake.row === disc.row) {
+        snake.die();
+        this._spawnDiscTrail(disc);
+        disc.deactivate();
+        this.soundManager?.playEnemyKill();
+        this.cameras.main.shake(CONFIG.JUICE.KILL_SHAKE_DURATION, CONFIG.JUICE.KILL_SHAKE_INTENSITY);
+        this._spawnExplosion(snake.col, snake.row);
+        this.score += CONFIG.SNAKE.KILL_SCORE;
+        this._spawnPopup(snake.col, snake.row, `+${CONFIG.SNAKE.KILL_SCORE}`, CONFIG.COLORS.GREEN);
+        const uiScene = this.scene.get('UIScene');
+        if (uiScene && uiScene.scene.isActive()) {
+          uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
+        }
+        return;
       }
     }
   }
@@ -289,10 +327,13 @@ export default class GameScene extends Phaser.Scene {
     const alertLevels = CONFIG.ENEMY_ALERT_GLOW;
     const maxAlertRadius = alertLevels[alertLevels.length - 1].radius;
 
-    for (const enemy of this.enemies) {
-      if (!enemy.alive || !enemy.chasing) continue;
-      const ec = enemy.col;
-      const er = enemy.row;
+    const chasingEntities = [
+      ...this.enemies.filter(e => e.alive && e.chasing),
+      ...this.snakes.filter(s => s.alive && s.chasing),
+    ];
+    for (const entity of chasingEntities) {
+      const ec = entity.col;
+      const er = entity.row;
       for (let r = er - maxAlertRadius; r <= er + maxAlertRadius; r++) {
         if (r < 0 || r >= CONFIG.GRID_ROWS) continue;
         for (let c = ec - maxAlertRadius; c <= ec + maxAlertRadius; c++) {
@@ -406,6 +447,110 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  _spawnDiscTrail(disc) {
+    if (!disc.path || disc.path.length === 0) return;
+    const j = CONFIG.JUICE;
+    const chars = j.DISC_TRAIL_CHARS;
+    const colors = j.DISC_TRAIL_COLORS;
+    const pathLen = disc.path.length;
+
+    for (let i = 0; i < pathLen; i++) {
+      const cell = disc.path[i];
+      const pos = this.gridManager.gridToPixel(cell.col, cell.row);
+      const t = i / Math.max(pathLen - 1, 1); // 0..1 along path
+
+      // Pick color: gradient from bright (start) to dim (end)
+      const colorIdx = Math.min(Math.floor(t * colors.length), colors.length - 1);
+      const color = colors[colorIdx];
+
+      for (let p = 0; p < j.DISC_TRAIL_PARTICLES_PER_CELL; p++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const ox = (Math.random() - 0.5) * 2 * j.DISC_TRAIL_SCATTER;
+        const oy = (Math.random() - 0.5) * 2 * j.DISC_TRAIL_SCATTER;
+        const driftX = (Math.random() - 0.5) * j.DISC_TRAIL_SCATTER * 3;
+        const driftY = (Math.random() - 0.5) * j.DISC_TRAIL_SCATTER * 3;
+        const startAlpha = j.DISC_TRAIL_ALPHA * (1 - t * 0.4);
+        const scale = 0.6 + Math.random() * 0.8;
+        const duration = j.DISC_TRAIL_DURATION * (0.7 + Math.random() * 0.6);
+
+        const particle = this.add.text(pos.x + ox, pos.y + oy, char, {
+          fontFamily: CONFIG.FONT_FAMILY,
+          fontSize: CONFIG.JUICE.POPUP_FONT_SIZE,
+          color,
+        }).setOrigin(0.5).setDepth(15).setAlpha(startAlpha).setScale(scale);
+
+        this.tweens.add({
+          targets: particle,
+          x: pos.x + ox + driftX,
+          y: pos.y + oy + driftY,
+          alpha: 0,
+          scaleX: scale * 0.3,
+          scaleY: scale * 0.3,
+          duration,
+          delay: i * j.DISC_TRAIL_STAGGER + p * 10,
+          ease: 'Power2',
+          onComplete: () => particle.destroy(),
+        });
+      }
+    }
+  }
+
+  _spawnSparks(col, row, disc) {
+    const pos = this.gridManager.gridToPixel(col, row);
+    const chars = CONFIG.JUICE.SPARK_CHARS;
+    const color = disc ? CONFIG.DISC_COLOR : CONFIG.COLORS.WHITE;
+    for (let i = 0; i < CONFIG.JUICE.SPARK_COUNT; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const angle = Math.random() * Math.PI * 2;
+      const dist = CONFIG.JUICE.SPARK_SPREAD;
+      const spark = this.add.text(pos.x, pos.y, char, {
+        fontFamily: CONFIG.FONT_FAMILY,
+        fontSize: CONFIG.JUICE.POPUP_FONT_SIZE,
+        color,
+      }).setOrigin(0.5).setDepth(20);
+
+      this.tweens.add({
+        targets: spark,
+        x: pos.x + Math.cos(angle) * dist,
+        y: pos.y + Math.sin(angle) * dist,
+        alpha: 0,
+        duration: CONFIG.JUICE.SPARK_DURATION,
+        ease: 'Power2',
+        onComplete: () => spark.destroy(),
+      });
+    }
+  }
+
+  _onDiscWallHit(col, row, disc) {
+    this._spawnSparks(col, row, disc);
+    this._spawnDiscTrail(disc);
+  }
+
+  _findSnakeBodyPositions(headCol, headRow, bodyLength) {
+    const positions = [];
+    let curCol = headCol;
+    let curRow = headRow;
+    const used = new Set([`${headCol},${headRow}`]);
+
+    for (let i = 0; i < bodyLength; i++) {
+      const neighbors = this.gridManager.getWalkableNeighbors(curCol, curRow);
+      let found = false;
+      for (const n of neighbors) {
+        const key = `${n.col},${n.row}`;
+        if (!used.has(key)) {
+          positions.push({ col: n.col, row: n.row });
+          used.add(key);
+          curCol = n.col;
+          curRow = n.row;
+          found = true;
+          break;
+        }
+      }
+      if (!found) return null; // Not enough walkable space for body
+    }
+    return positions;
+  }
+
   update(time, delta) {
     if (this.levelComplete) return;
 
@@ -479,6 +624,14 @@ export default class GameScene extends Phaser.Scene {
           return;
         }
       }
+      // Check snake collision (all segments are lethal)
+      for (const snake of this.snakes) {
+        if (!snake.alive) continue;
+        if (snake.occupiesCell(this.player.col, this.player.row)) {
+          this._playerHit();
+          return;
+        }
+      }
     }
 
     // Check exit
@@ -509,19 +662,34 @@ export default class GameScene extends Phaser.Scene {
         anyAlerted = true;
       }
     }
+    for (const snake of this.snakes) {
+      if (snake.alive) {
+        snake.activateAlert();
+        anyAlerted = true;
+      }
+    }
     if (anyAlerted) this.soundManager?.playAlertSiren();
   }
 
   _nextLevel() {
     this.levelComplete = true;
 
-    // Freeze and explode remaining enemies
+    // Freeze and explode remaining enemies and snakes
     let explosionDelay = 0;
     for (const enemy of this.enemies) {
       if (!enemy.alive) continue;
       this.time.delayedCall(explosionDelay, () => {
         enemy.die();
         this._spawnExplosion(enemy.col, enemy.row);
+        this.soundManager?.playEnemyKill();
+      });
+      explosionDelay += 100;
+    }
+    for (const snake of this.snakes) {
+      if (!snake.alive) continue;
+      this.time.delayedCall(explosionDelay, () => {
+        snake.die();
+        this._spawnExplosion(snake.col, snake.row);
         this.soundManager?.playEnemyKill();
       });
       explosionDelay += 100;
@@ -705,6 +873,7 @@ export default class GameScene extends Phaser.Scene {
   _cleanup() {
     this.events.off('player-throw-disc', this._onThrowDisc, this);
     this.events.off('disc-moved', this._onDiscMoved, this);
+    this.events.off('disc-wall-hit', this._onDiscWallHit, this);
     if (this.skipKey) this.skipKey.removeAllListeners();
     if (this.speedBonusTimer) this.speedBonusTimer.destroy();
     if (this.speedBonusCountdown) this.speedBonusCountdown.destroy();
@@ -715,6 +884,7 @@ export default class GameScene extends Phaser.Scene {
     this._cleanup();
     this.player?.destroy();
     this.enemies?.forEach(e => e.destroy());
+    this.snakes?.forEach(s => s.destroy());
     this.discs?.forEach(d => d.destroy());
     this.tokens?.forEach(t => t.destroy());
     this.speedBonuses?.forEach(sb => sb.destroy());

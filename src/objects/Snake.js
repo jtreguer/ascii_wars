@@ -1,17 +1,16 @@
 import { CONFIG } from '../config.js';
-import { DIRECTION, DIRECTION_DELTA, CELL_TYPE } from '../utils/constants.js';
+import { DIRECTION, DIRECTION_DELTA } from '../utils/constants.js';
 import { manhattanDistance, shuffleArray } from '../utils/math.js';
 import { findPath } from '../systems/Pathfinder.js';
 
-export default class Enemy {
-  constructor(scene, gridManager, col, row) {
+export default class Snake {
+  constructor(scene, gridManager, col, row, bodyPositions) {
     this.scene = scene;
     this.gridManager = gridManager;
     this.col = col;
     this.row = row;
     this.isMoving = false;
     this.alive = true;
-    this.charIndex = 0;
     this.chasing = false;
     this.alertMode = false;
 
@@ -20,45 +19,64 @@ export default class Enemy {
     this.patrolMoveCount = 0;
     this.relocateThreshold = this._nextRelocateThreshold();
 
-    const pos = gridManager.gridToPixel(col, row);
-    this.text = scene.add.text(pos.x, pos.y, CONFIG.ENEMY_CHARS[0], {
+    // Body segments (index 0 = right behind head)
+    this.segments = bodyPositions.map(pos => ({
+      col: pos.col,
+      row: pos.row,
+    }));
+
+    // Create head text
+    const headPos = gridManager.gridToPixel(col, row);
+    this.text = scene.add.text(headPos.x, headPos.y, CONFIG.SNAKE.HEAD_CHAR, {
       fontFamily: CONFIG.FONT_FAMILY,
       fontSize: CONFIG.CELL_FONT_SIZE,
-      color: CONFIG.COLORS.MAGENTA,
+      color: CONFIG.SNAKE.COLOR,
     }).setOrigin(0.5);
     this.text.setDepth(10);
 
-    // Spawn fade-in
-    this.text.setAlpha(0);
-    this.text.setScale(0.3);
-    scene.tweens.add({
-      targets: this.text,
-      alpha: 1,
-      scaleX: 1,
-      scaleY: 1,
-      duration: CONFIG.JUICE.SPAWN_FADE_DURATION,
-      ease: 'Back.easeOut',
+    // Create body segment texts
+    this.segmentTexts = this.segments.map(seg => {
+      const pos = gridManager.gridToPixel(seg.col, seg.row);
+      const t = scene.add.text(pos.x, pos.y, CONFIG.SNAKE.BODY_CHAR, {
+        fontFamily: CONFIG.FONT_FAMILY,
+        fontSize: CONFIG.CELL_FONT_SIZE,
+        color: CONFIG.SNAKE.COLOR,
+      }).setOrigin(0.5);
+      t.setDepth(10);
+      return t;
     });
 
-    // Physics body for overlap
-    scene.physics.add.existing(this.text);
-    this.text.body.setSize(CONFIG.CELL_SIZE - 4, CONFIG.CELL_SIZE - 4);
-    this.text.body.setImmovable(true);
+    // Spawn fade-in for head + all body segments
+    const allTexts = [this.text, ...this.segmentTexts];
+    for (const t of allTexts) {
+      t.setAlpha(0);
+      t.setScale(0.3);
+      scene.tweens.add({
+        targets: t,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: CONFIG.JUICE.SPAWN_FADE_DURATION,
+        ease: 'Back.easeOut',
+      });
+    }
 
     // Start patrol timer
     this._scheduleMove();
   }
 
   _nextRelocateThreshold() {
-    return CONFIG.ENEMY_RELOCATE_MIN_MOVES +
-      Math.floor(Math.random() * (CONFIG.ENEMY_RELOCATE_MAX_MOVES - CONFIG.ENEMY_RELOCATE_MIN_MOVES + 1));
+    const s = CONFIG.SNAKE;
+    return s.RELOCATE_MIN_MOVES +
+      Math.floor(Math.random() * (s.RELOCATE_MAX_MOVES - s.RELOCATE_MIN_MOVES + 1));
   }
 
   _scheduleMove() {
     if (!this.alive) return;
+    const s = CONFIG.SNAKE;
     const delay = this.chasing
-      ? CONFIG.ENEMY_CHASE_SPEED + CONFIG.ENEMY_CHASE_PAUSE
-      : CONFIG.ENEMY_MOVE_SPEED + CONFIG.ENEMY_PATROL_PAUSE;
+      ? s.CHASE_SPEED + s.CHASE_PAUSE
+      : s.MOVE_SPEED + s.PATROL_PAUSE;
 
     this.moveTimer = this.scene.time.delayedCall(delay, () => {
       this._move();
@@ -72,14 +90,14 @@ export default class Enemy {
     const playerCol = this.scene.player?.col;
     const playerRow = this.scene.player?.row;
     const playerAlive = this.scene.player?.alive;
+    const s = CONFIG.SNAKE;
 
-    const chaseRange = this.alertMode ? CONFIG.ENEMY_CHASE_RANGE * 2 : CONFIG.ENEMY_CHASE_RANGE;
+    const chaseRange = this.alertMode ? s.CHASE_RANGE * 2 : s.CHASE_RANGE;
     const inRange = playerCol !== undefined && playerRow !== undefined && playerAlive &&
       manhattanDistance(this.col, this.row, playerCol, playerRow) <= chaseRange;
 
     // Update chase state
     if (this.alertMode) {
-      // Alert enemies stay red, silently toggle chase based on doubled range
       const wasChasing = this.chasing;
       this.chasing = inRange;
       if (wasChasing && !this.chasing) {
@@ -89,7 +107,7 @@ export default class Enemy {
       }
     } else if (inRange && !this.chasing) {
       this.chasing = true;
-      this.text.setColor(CONFIG.COLORS.RED);
+      this._setColor(s.CHASE_COLOR);
       this.scene.soundManager?.playAlertSiren();
       this.scene.tweens.add({
         targets: this.text,
@@ -101,7 +119,7 @@ export default class Enemy {
       });
     } else if (!inRange && this.chasing) {
       this.chasing = false;
-      this.text.setColor(CONFIG.COLORS.MAGENTA);
+      this._setColor(s.COLOR);
       this.patrolAnchor = { col: this.col, row: this.row };
       this.patrolMoveCount = 0;
       this.relocateThreshold = this._nextRelocateThreshold();
@@ -128,27 +146,63 @@ export default class Enemy {
 
     if (!this.gridManager.isWalkable(newCol, newRow)) return;
 
+    // Don't move head into own body
+    for (const seg of this.segments) {
+      if (seg.col === newCol && seg.row === newRow) return;
+    }
+
     this.isMoving = true;
+
+    // Snake movement: shift body segments
+    const oldHeadCol = this.col;
+    const oldHeadRow = this.row;
+
+    // Move body: last segment takes position of previous, etc.
+    for (let i = this.segments.length - 1; i > 0; i--) {
+      this.segments[i].col = this.segments[i - 1].col;
+      this.segments[i].row = this.segments[i - 1].row;
+    }
+    // First body segment takes old head position
+    if (this.segments.length > 0) {
+      this.segments[0].col = oldHeadCol;
+      this.segments[0].row = oldHeadRow;
+    }
+
+    // Move head
     this.col = newCol;
     this.row = newRow;
 
-    // Cycle through chars — faster set when chasing
-    const chars = this.chasing ? CONFIG.ENEMY_CHASE_CHARS : CONFIG.ENEMY_CHARS;
-    this.charIndex = (this.charIndex + 1) % chars.length;
-    this.text.setText(chars[this.charIndex]);
-
-    const moveSpeed = this.chasing ? CONFIG.ENEMY_CHASE_SPEED : CONFIG.ENEMY_MOVE_SPEED;
-    const target = this.gridManager.gridToPixel(newCol, newRow);
+    // Tween all parts to new positions
+    const moveSpeed = this.chasing ? s.CHASE_SPEED : s.MOVE_SPEED;
+    const headTarget = this.gridManager.gridToPixel(newCol, newRow);
     this.scene.tweens.add({
       targets: this.text,
-      x: target.x,
-      y: target.y,
+      x: headTarget.x,
+      y: headTarget.y,
       duration: moveSpeed,
       ease: 'Linear',
       onComplete: () => {
         this.isMoving = false;
       },
     });
+
+    for (let i = 0; i < this.segments.length; i++) {
+      const segTarget = this.gridManager.gridToPixel(this.segments[i].col, this.segments[i].row);
+      this.scene.tweens.add({
+        targets: this.segmentTexts[i],
+        x: segTarget.x,
+        y: segTarget.y,
+        duration: moveSpeed,
+        ease: 'Linear',
+      });
+    }
+  }
+
+  _setColor(color) {
+    this.text.setColor(color);
+    for (const t of this.segmentTexts) {
+      t.setColor(color);
+    }
   }
 
   _chaseDirection(playerCol, playerRow) {
@@ -169,7 +223,7 @@ export default class Enemy {
   _patrolDirection() {
     const dist = manhattanDistance(this.col, this.row, this.patrolAnchor.col, this.patrolAnchor.row);
 
-    if (dist > CONFIG.ENEMY_PATROL_RADIUS) {
+    if (dist > CONFIG.SNAKE.PATROL_RADIUS) {
       const toward = this._moveToward(this.patrolAnchor.col, this.patrolAnchor.row);
       if (toward) return toward;
     }
@@ -206,7 +260,7 @@ export default class Enemy {
   }
 
   _pickNewAnchor() {
-    const dist = CONFIG.ENEMY_RELOCATE_DISTANCE;
+    const dist = CONFIG.SNAKE.RELOCATE_DISTANCE;
     for (let attempt = 0; attempt < 10; attempt++) {
       const dx = Math.floor(Math.random() * (dist * 2 + 1)) - dist;
       const dy = Math.floor(Math.random() * (dist * 2 + 1)) - dist;
@@ -220,17 +274,28 @@ export default class Enemy {
     }
   }
 
+  occupiesCell(col, row) {
+    if (this.col === col && this.row === row) return true;
+    for (const seg of this.segments) {
+      if (seg.col === col && seg.row === row) return true;
+    }
+    return false;
+  }
+
   activateAlert() {
     if (!this.alive) return;
     this.alertMode = true;
     this.chasing = true;
-    this.text.setColor(CONFIG.COLORS.RED);
+    this._setColor(CONFIG.SNAKE.CHASE_COLOR);
   }
 
   die() {
     this.alive = false;
     if (this.moveTimer) this.moveTimer.destroy();
-    this.text.setColor(CONFIG.COLORS.RED);
+    this.cascadeTimers = [];
+
+    // Cascade death: head first, then body segments with stagger
+    this.text.setColor(CONFIG.SNAKE.CHASE_COLOR);
     this.scene.tweens.add({
       targets: this.text,
       alpha: 0,
@@ -243,10 +308,38 @@ export default class Enemy {
         this.text.setActive(false);
       },
     });
+
+    // Body segments explode one-by-one from head to tail
+    for (let i = 0; i < this.segments.length; i++) {
+      const seg = this.segments[i];
+      const segText = this.segmentTexts[i];
+      const timer = this.scene.time.delayedCall(CONFIG.JUICE.SNAKE_CASCADE_DELAY * (i + 1), () => {
+        this.scene._spawnExplosion(seg.col, seg.row);
+        this.scene.soundManager?.playEnemyKill();
+        segText.setColor(CONFIG.SNAKE.CHASE_COLOR);
+        this.scene.tweens.add({
+          targets: segText,
+          alpha: 0,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          duration: 300,
+          ease: 'Power2',
+          onComplete: () => {
+            segText.setVisible(false);
+            segText.setActive(false);
+          },
+        });
+      });
+      this.cascadeTimers.push(timer);
+    }
   }
 
   destroy() {
     if (this.moveTimer) this.moveTimer.destroy();
+    if (this.cascadeTimers) this.cascadeTimers.forEach(t => t.destroy());
     this.text.destroy();
+    for (const t of this.segmentTexts) {
+      t.destroy();
+    }
   }
 }

@@ -98,6 +98,28 @@ export const CONFIG = {
     VOLUME: 0.25,
   },
 
+  // Snake enemy
+  SNAKE: {
+    HEAD_CHAR: '\u03A3',   // Σ (uppercase sigma)
+    BODY_CHAR: '\u03C3',   // σ (lowercase sigma)
+    BODY_LENGTH: 3,
+    BODY_LENGTH_LEVEL_8: 4,
+    MOVE_SPEED: 500,       // ms per grid step (patrol)
+    CHASE_SPEED: 180,      // ms per grid step (chase)
+    CHASE_RANGE: 6,        // cells manhattan distance
+    PATROL_PAUSE: 700,     // ms pause between patrol moves
+    CHASE_PAUSE: 80,       // ms pause between chase moves
+    PATROL_RADIUS: 5,
+    RELOCATE_MIN_MOVES: 5,
+    RELOCATE_MAX_MOVES: 10,
+    RELOCATE_DISTANCE: 5,
+    COLOR: '#00ff00',
+    CHASE_COLOR: '#ff0000',
+    KILL_SCORE: 500,
+    MIN_LEVEL: 4,
+    TWO_MIN_LEVEL: 7,
+  },
+
   // Disc glow
   DISC_GLOW: [
     { radius: 1, color: '#66cccc' },
@@ -181,6 +203,27 @@ export const CONFIG = {
 
     // Token magnet
     MAGNET_DURATION: 100,
+
+    // Disc kill trail (particle burst per cell)
+    DISC_TRAIL_CHARS: ['o', '*', '~', '\u00B7', '.', '+', '\u2022', '\u00B0'],  // o * ~ · . + • °
+    DISC_TRAIL_PARTICLES_PER_CELL: 3,
+    DISC_TRAIL_SCATTER: 8,         // px random offset from cell center
+    DISC_TRAIL_DURATION: 500,
+    DISC_TRAIL_ALPHA: 0.7,
+    DISC_TRAIL_STAGGER: 25,
+    DISC_TRAIL_COLORS: ['#88ffff', '#55dddd', '#33aaaa', '#116666'],
+
+    // Snake death cascade
+    SNAKE_CASCADE_DELAY: 80,
+
+    // Enemy/snake spawn fade-in
+    SPAWN_FADE_DURATION: 400,
+
+    // Disc wall-hit sparks
+    SPARK_CHARS: ['\u00B7', '*', '.'],  // ·, *, .
+    SPARK_COUNT: 3,
+    SPARK_SPREAD: 10,
+    SPARK_DURATION: 250,
   },
 
   // Audio
