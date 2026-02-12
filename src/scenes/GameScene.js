@@ -246,7 +246,10 @@ export default class GameScene extends Phaser.Scene {
         enemy.die();
         disc.deactivate();
         this.soundManager?.playEnemyKill();
+        this.cameras.main.shake(CONFIG.JUICE.KILL_SHAKE_DURATION, CONFIG.JUICE.KILL_SHAKE_INTENSITY);
+        this._spawnExplosion(enemy.col, enemy.row);
         this.score += CONFIG.ENEMY_KILL_SCORE;
+        this._spawnPopup(enemy.col, enemy.row, `+${CONFIG.ENEMY_KILL_SCORE}`, CONFIG.COLORS.RED);
         const uiScene = this.scene.get('UIScene');
         if (uiScene && uiScene.scene.isActive()) {
           uiScene.events.emit(EVENTS.SCORE_CHANGED, this.score);
@@ -359,6 +362,50 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  _spawnPopup(col, row, text, color) {
+    const pos = this.gridManager.gridToPixel(col, row);
+    const popup = this.add.text(pos.x, pos.y, text, {
+      fontFamily: CONFIG.FONT_FAMILY,
+      fontSize: CONFIG.JUICE.POPUP_FONT_SIZE,
+      color,
+    }).setOrigin(0.5).setDepth(20);
+
+    this.tweens.add({
+      targets: popup,
+      y: pos.y - CONFIG.JUICE.POPUP_RISE,
+      alpha: 0,
+      duration: CONFIG.JUICE.POPUP_DURATION,
+      delay: CONFIG.JUICE.POPUP_DELAY,
+      ease: 'Power2',
+      onComplete: () => popup.destroy(),
+    });
+  }
+
+  _spawnExplosion(col, row) {
+    const pos = this.gridManager.gridToPixel(col, row);
+    const chars = CONFIG.JUICE.EXPLODE_CHARS;
+    for (let i = 0; i < CONFIG.JUICE.EXPLODE_COUNT; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const angle = Math.random() * Math.PI * 2;
+      const dist = CONFIG.JUICE.EXPLODE_SPREAD;
+      const particle = this.add.text(pos.x, pos.y, char, {
+        fontFamily: CONFIG.FONT_FAMILY,
+        fontSize: CONFIG.JUICE.POPUP_FONT_SIZE,
+        color: CONFIG.COLORS.RED,
+      }).setOrigin(0.5).setDepth(20);
+
+      this.tweens.add({
+        targets: particle,
+        x: pos.x + Math.cos(angle) * dist,
+        y: pos.y + Math.sin(angle) * dist,
+        alpha: 0,
+        duration: CONFIG.JUICE.EXPLODE_DURATION,
+        ease: 'Power2',
+        onComplete: () => particle.destroy(),
+      });
+    }
+  }
+
   update(time, delta) {
     if (this.levelComplete) return;
 
@@ -382,9 +429,10 @@ export default class GameScene extends Phaser.Scene {
     for (const token of this.tokens) {
       if (token.collected) continue;
       if (this.player.col === token.col && this.player.row === token.row) {
-        token.collect();
+        token.collect(this.player.text.x, this.player.text.y);
         this.collectedTokens++;
         this.score += CONFIG.TOKEN_SCORE;
+        this._spawnPopup(token.col, token.row, `+${CONFIG.TOKEN_SCORE}`, CONFIG.COLORS.YELLOW);
         this.soundManager?.playTokenCollect();
         const uiScene = this.scene.get('UIScene');
         if (uiScene && uiScene.scene.isActive()) {
@@ -473,6 +521,7 @@ export default class GameScene extends Phaser.Scene {
       if (!enemy.alive) continue;
       this.time.delayedCall(explosionDelay, () => {
         enemy.die();
+        this._spawnExplosion(enemy.col, enemy.row);
         this.soundManager?.playEnemyKill();
       });
       explosionDelay += 100;
@@ -521,6 +570,7 @@ export default class GameScene extends Phaser.Scene {
     this.speedBonusActive = true;
     this.player.speedMultiplier = CONFIG.SPEED_BONUS.MULTIPLIER;
     this.score += CONFIG.SPEED_BONUS_SCORE;
+    this._spawnPopup(speedBonus.col, speedBonus.row, `+${CONFIG.SPEED_BONUS_SCORE}`, CONFIG.COLORS.WHITE);
 
     // Tint player to indicate speed boost
     this.player.text.setColor(CONFIG.COLORS.WHITE);
@@ -565,6 +615,7 @@ export default class GameScene extends Phaser.Scene {
     this.soundManager?.playDiscCarrier();
     this.discsRemaining = CONFIG.LEVEL.DISCS_PER_LEVEL;
     this.score += CONFIG.DISC_CARRIER_SCORE;
+    this._spawnPopup(carrier.col, carrier.row, `+${CONFIG.DISC_CARRIER_SCORE}`, CONFIG.COLORS.ORANGE);
     const uiScene = this.scene.get('UIScene');
     if (uiScene && uiScene.scene.isActive()) {
       uiScene.events.emit(EVENTS.DISCS_CHANGED, this.discsRemaining);

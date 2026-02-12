@@ -79,6 +79,22 @@ export default class Player {
     if (!this.gridManager.isWalkable(newCol, newRow)) return;
 
     this.isMoving = true;
+
+    // Spawn trail ghost at current position before moving
+    const trailColor = this.speedMultiplier > 1 ? CONFIG.JUICE.TRAIL_SPEED_COLOR : CONFIG.JUICE.TRAIL_COLOR;
+    const trail = this.scene.add.text(this.text.x, this.text.y, CONFIG.JUICE.TRAIL_CHAR, {
+      fontFamily: CONFIG.FONT_FAMILY,
+      fontSize: CONFIG.CELL_FONT_SIZE,
+      color: trailColor,
+    }).setOrigin(0.5).setAlpha(CONFIG.JUICE.TRAIL_ALPHA).setDepth(5);
+    this.scene.tweens.add({
+      targets: trail,
+      alpha: 0,
+      duration: CONFIG.JUICE.TRAIL_DURATION,
+      ease: 'Linear',
+      onComplete: () => trail.destroy(),
+    });
+
     this.col = newCol;
     this.row = newRow;
 

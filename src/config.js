@@ -150,6 +150,39 @@ export const CONFIG = {
   DISC_BONUS: [0, 150, 500, 1000], // indexed by discs remaining (0, 1, 2, 3)
   LEVEL_RECAP_DURATION: 2800, // ms to show bonus recap before next level
 
+  // Juice effects
+  JUICE: {
+    // Score popup
+    POPUP_RISE: 30,
+    POPUP_DURATION: 1200,
+    POPUP_DELAY: 200,
+    POPUP_FONT_SIZE: '14px',
+
+    // Screen shake on kill
+    KILL_SHAKE_DURATION: 100,
+    KILL_SHAKE_INTENSITY: 0.006,
+
+    // ASCII explosion
+    EXPLODE_CHARS: ['*', '#', '!', '~', '+', 'x'],
+    EXPLODE_COUNT: 5,
+    EXPLODE_SPREAD: 20,
+    EXPLODE_DURATION: 350,
+
+    // Chase pulse
+    CHASE_PULSE_SCALE: 1.4,
+    CHASE_PULSE_DURATION: 150,
+
+    // Player trail
+    TRAIL_CHAR: '.',
+    TRAIL_DURATION: 300,
+    TRAIL_ALPHA: 0.4,
+    TRAIL_COLOR: '#007777',
+    TRAIL_SPEED_COLOR: '#777777',
+
+    // Token magnet
+    MAGNET_DURATION: 100,
+  },
+
   // Audio
   AUDIO: {
     MASTER_VOLUME: 0.3,

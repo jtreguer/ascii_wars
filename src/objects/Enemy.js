@@ -79,6 +79,14 @@ export default class Enemy {
       this.chasing = true;
       this.text.setColor(CONFIG.COLORS.RED);
       this.scene.soundManager?.playAlertSiren();
+      this.scene.tweens.add({
+        targets: this.text,
+        scaleX: CONFIG.JUICE.CHASE_PULSE_SCALE,
+        scaleY: CONFIG.JUICE.CHASE_PULSE_SCALE,
+        duration: CONFIG.JUICE.CHASE_PULSE_DURATION,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+      });
     } else if (!inRange && this.chasing) {
       this.chasing = false;
       this.text.setColor(CONFIG.COLORS.MAGENTA);

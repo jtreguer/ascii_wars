@@ -30,21 +30,32 @@ export default class Token {
     });
   }
 
-  collect() {
+  collect(targetX, targetY) {
     if (this.collected) return;
     this.collected = true;
     this.pulseTween.stop();
 
+    // Phase 1: magnet toward player
     this.scene.tweens.add({
       targets: this.text,
-      alpha: 0,
-      scaleX: 2,
-      scaleY: 2,
-      duration: 200,
-      ease: 'Power2',
+      x: targetX,
+      y: targetY,
+      duration: CONFIG.JUICE.MAGNET_DURATION,
+      ease: 'Quad.easeIn',
       onComplete: () => {
-        this.text.setVisible(false);
-        this.text.setActive(false);
+        // Phase 2: scale up + fade
+        this.scene.tweens.add({
+          targets: this.text,
+          alpha: 0,
+          scaleX: 2,
+          scaleY: 2,
+          duration: 200,
+          ease: 'Power2',
+          onComplete: () => {
+            this.text.setVisible(false);
+            this.text.setActive(false);
+          },
+        });
       },
     });
   }
